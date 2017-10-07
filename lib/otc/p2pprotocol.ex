@@ -18,7 +18,8 @@ defmodule OTC.P2PProtocol do
   end
 
   def handle_info({:tcp, socket, data}, state = %{socket: socket, transport: transport}) do
-    {:ok, request} = OTC.RPCRequest.decode(data)
+    request = OTC.RPCRequest.decode(data)
+    Logger.info "Executing #(request.proc)"
     state = handle_rpc(request, state)
     {:noreply, state}
   end
@@ -28,8 +29,20 @@ defmodule OTC.P2PProtocol do
     {:stop, :normal, state}
   end
 
+  def handle_rpc(%OTC.RPCRequest{proc: :version, extra_data: extra_data}, state = %{socket: socket, transport: transport}) do
+    reqid = UUID.uuid1
+    request = %OTC.RPCRequest{reqid: reqid, proc: :version, extra_data: %{"vsn": OTC.version}}
+    payload = OTC.RPCResponse.encode(request)
+    transport.send(socket, payload)
+    if extra_data["vsn"] == OTC.version do
+      request = %OTC.RPCRequest{reqid: reqid, proc: :versionack}
+      payload = OTC.RPCResponse.encode(request)
+      transport.send(socket, payload)
+    end
+    state
+  end
+  
   def handle_rpc(%OTC.RPCRequest{reqid: reqid, proc: :heartbeat, extra_data: []}, state = %{socket: socket, transport: transport}) do
-    Logger.info "Heartbeat"
     response = %OTC.RPCResponse{reqid: reqid, errors: [], result: "heartbeat"}    
     payload = OTC.RPCResponse.encode(response)
     transport.send(socket, payload)
@@ -50,8 +63,8 @@ defmodule OTC.P2PProtocol do
     state
   end
 
-  def handle_rpc(_, state) do
-    Logger.warn "Invalid RPC"
+  def handle_rpc(request, state) do
+    Logger.warn "Invalid request "
     state
   end
 end

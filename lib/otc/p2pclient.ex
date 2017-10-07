@@ -14,6 +14,10 @@ defmodule OTC.P2PClient do
     GenServer.start_link(__MODULE__, %{@initial_state | host: host, port: port})
   end
 
+  def version(pid) do
+    :gen_server.cast(pid, :version)
+  end
+  
   def heartbeat(pid) do
     :gen_server.call(pid, :heartbeat)
   end
@@ -27,8 +31,15 @@ defmodule OTC.P2PClient do
     {:ok, %{state | socket: socket}}
   end
 
-  def handle_call(:listpeers, from, state = %{socket: socket, pending_reqs: pending_reqs}) do
-    Logger.info "Client call: listpeers"
+  def handle_cast({:version, version}, state = %{socket: socket}) do
+    reqid = UUID.uuid1(:hex)
+    request = %OTC.RPCRequest{reqid: reqid, proc: :version, extra_data: #{"vsn": OTC.version}}
+    payload = OTC.RPCRequest.encode(request)
+    :ok = :gen_tcp.send(socket, payload)
+    {:noreply, state}
+  end
+
+  def handle_call(:listpeers, from, state = %{socket: socket}) do
     reqid = UUID.uuid1(:hex)
     request = %OTC.RPCRequest{reqid: reqid, proc: :listpeers}
     payload = OTC.RPCRequest.encode(request)
@@ -36,7 +47,7 @@ defmodule OTC.P2PClient do
     {:noreply, put_in(state.pending_reqs[:reqid], from)}
   end
 
-  def handle_call(:heartbeat, from, state = %{socket: socket, pending_reqs: pending_reqs}) do
+  def handle_call(:heartbeat, from, state = %{socket: socket}) do
     Logger.info "Client call: heartbeat"
     reqid = UUID.uuid1(:hex)
     request = %OTC.RPCRequest{reqid: reqid, proc: :heartbeat}
@@ -46,7 +57,7 @@ defmodule OTC.P2PClient do
   end
     
   def handle_info({:tcp, socket, data}, state = %{socket: socket, pending_reqs: pending_reqs}) do
-    {:ok, response} = OTC.RPCResponse.decode(data)
+    response = OTC.RPCResponse.decode(data)
     reqid = response.reqid
     if Map.has_key?(pending_reqs, :reqid) do
       :gen_server.reply(pending_reqs[:reqid], response)

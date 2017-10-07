@@ -20,12 +20,9 @@ defmodule OTC.RPCRequest do
     {ok, request} = :msgpack.unpack(data)
     {:ok, reqid} = Map.fetch(request, "reqid")
     {:ok, proc} = Map.fetch(request, "proc")
-    if not Enum.member?(@allowed_proc_values, proc) do
-      :error
-    else
-      extra_data = Map.get(request, "extra_data", [])
-      {:ok, %OTC.RPCRequest{reqid: reqid, proc: String.to_atom(proc), extra_data: extra_data}}
-    end
+    :true = Enum.member?(@allowed_proc_values, proc)
+    extra_data = Map.get(request, "extra_data", [])
+    %OTC.RPCRequest{reqid: reqid, proc: String.to_atom(proc), extra_data: extra_data}
   end
   
 end

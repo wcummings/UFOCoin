@@ -32,6 +32,6 @@ defmodule OTC.Mixfile do
      {:msgpack, "~> 0.7.0"},
      {:amnesia, github: "meh/amnesia", tag: :master},
      {:uuid, "~> 1.1"},
-     {:dialyxir, "~> 0.5", only: [:dev], runtime: false}]
+     {:dialyxir, "~> 0.5", only: [:dev], runtime: false}
   end
 end
