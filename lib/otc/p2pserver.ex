@@ -1,4 +1,4 @@
-defmodule OBC.P2PServer do
+defmodule OTC.P2PServer do
   use GenServer
 
   def start_link() do

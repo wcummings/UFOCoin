@@ -1,8 +1,8 @@
-defmodule OBC.Mixfile do
+defmodule OTC.Mixfile do
   use Mix.Project
 
   def project do
-    [app: :obc,
+    [app: :otc,
      version: "0.1.0",
      elixir: "~> 1.4",
      build_embedded: Mix.env == :prod,
@@ -31,6 +31,7 @@ defmodule OBC.Mixfile do
     [{:ranch, "~> 1.4.0"},
      {:msgpack, "~> 0.7.0"},
      {:amnesia, github: "meh/amnesia", tag: :master},
-     {:uuid, "~> 1.1"}]
+     {:uuid, "~> 1.1"},
+     {:dialyxir, "~> 0.5", only: [:dev], runtime: false}]
   end
 end

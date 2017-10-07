@@ -1,6 +1,6 @@
 require Logger
 
-defmodule OBC.P2PClient do
+defmodule OTC.P2PClient do
   use GenServer
 
   @initial_state %{
@@ -30,26 +30,24 @@ defmodule OBC.P2PClient do
   def handle_call(:listpeers, from, state = %{socket: socket, pending_reqs: pending_reqs}) do
     Logger.info "Client call: listpeers"
     reqid = UUID.uuid1(:hex)
-    payload = :msgpack.pack(%{proc: "listpeers", reqid: reqid})
-    request = <<byte_size(payload) :: size(32), payload :: binary>>
+    request = %OTC.RPCRequest{reqid: reqid, proc: :listpeers}
+    payload = OTC.RPCRequest.encode(request)
     :ok = :gen_tcp.send(socket, payload)
-    {:noreply, %{state | pending_reqs: put_in(pending_reqs[:reqid], from)}}
+    {:noreply, put_in(state.pending_reqs[:reqid], from)}
   end
 
   def handle_call(:heartbeat, from, state = %{socket: socket, pending_reqs: pending_reqs}) do
     Logger.info "Client call: heartbeat"
     reqid = UUID.uuid1(:hex)
-    payload = :msgpack.pack(%{proc: "heartbeat", reqid: reqid})
+    request = %OTC.RPCRequest{reqid: reqid, proc: :heartbeat}
+    payload = OTC.RPCRequest.encode(request)
     :ok = :gen_tcp.send(socket, payload)
-    {:noreply, %{state | pending_reqs: put_in(pending_reqs[:reqid], from)}}
+    {:noreply, put_in(state.pending_reqs[:reqid], from)}
   end
     
   def handle_info({:tcp, socket, data}, state = %{socket: socket, pending_reqs: pending_reqs}) do
-    {:ok, response} = :msgpack.unpack(data)
-    # TODO: maybe validate response
-    # {:ok, code} = Map.fetch(response, :code)
-    # result = response[:result]
-    reqid = Map.fetch(response, :reqid)
+    {:ok, response} = OTC.RPCResponse.decode(data)
+    reqid = response.reqid
     if Map.has_key?(pending_reqs, :reqid) do
       :gen_server.reply(pending_reqs[:reqid], response)
     end

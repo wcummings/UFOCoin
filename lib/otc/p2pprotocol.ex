@@ -1,6 +1,6 @@
 require Logger
 
-defmodule OBC.P2PProtocol do
+defmodule OTC.P2PProtocol do
   use GenServer
 
   @behaviour :ranch_protocol
@@ -18,11 +18,8 @@ defmodule OBC.P2PProtocol do
   end
 
   def handle_info({:tcp, socket, data}, state = %{socket: socket, transport: transport}) do
-    {:ok, request} = :msgpack.unpack(data)
-    {:ok, proc} = Map.fetch(request, "proc")
-    {:ok, reqid} = Map.fetch(request, "reqid")
-    args = Map.get(request, "args", [])
-    state = handle_rpc({proc, args, reqid}, state)
+    {:ok, request} = OTC.RPCRequest.decode(data)
+    state = handle_rpc(request, state)
     {:noreply, state}
   end
   
@@ -31,23 +28,25 @@ defmodule OBC.P2PProtocol do
     {:stop, :normal, state}
   end
 
-  def handle_rpc({"heartbeat", [], reqid}, state = %{socket: socket, transport: transport}) do
+  def handle_rpc(%OTC.RPCRequest{reqid: reqid, proc: :heartbeat, extra_data: []}, state = %{socket: socket, transport: transport}) do
     Logger.info "Heartbeat"
-    payload = :msgpack.pack(%{reqid: reqid, result: "heartbeat"})
+    response = %OTC.RPCResponse{reqid: reqid, errors: [], result: "heartbeat"}    
+    payload = OTC.RPCResponse.encode(response)
     transport.send(socket, payload)
     state
   end
-  
-  def handle_rpc({"listpeers", [], reqid}, state = %{socket: socket, transport: transport}) do
-    {:ok, peers} = Peer.get_peers
-    payload = :msgpack.pack(%{reqid: reqid, result: peers})
+
+  def handle_rpc(%OTC.RPCRequest{reqid: reqid, proc: :listpeers}, state = %{socket: socket, transport: transport}) do
+    {:ok, peers} = Database.Peer.get_peers
+    response = %OTC.RPCResponse{reqid: reqid, errors: [], result: peers}
+    payload = OTC.RPCResponse.encode(response)
     transport.send(socket, payload)
     state
   end
 
   def handle_rpc({:addr, addr}, state) do
     # TODO: verify addr, then broadcast to existing peers
-    Peer.add_peer(addr)
+    Database.Peer.add_peer(addr)
     state
   end
 
