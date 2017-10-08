@@ -17,10 +17,10 @@ defmodule OTC.P2PProtocol do
     :gen_server.enter_loop(__MODULE__, [], %{socket: socket, transport: transport})
   end
 
-  def handle_info({:tcp, socket, data}, state = %{socket: socket, transport: transport}) do
-    request = OTC.RPCRequest.decode(data)
-    Logger.info "Executing #(request.proc)"
-    state = handle_rpc(request, state)
+  def handle_info({:tcp, _socket, data}, state) do
+    request = OTC.P2PPacket.decode(data)
+    Logger.info "Received #{request.proc}"
+    state = handle_packet(request, state)
     {:noreply, state}
   end
   
@@ -29,41 +29,34 @@ defmodule OTC.P2PProtocol do
     {:stop, :normal, state}
   end
 
-  def handle_rpc(%OTC.RPCRequest{proc: :version, extra_data: extra_data}, state = %{socket: socket, transport: transport}) do
-    reqid = UUID.uuid1
-    request = %OTC.RPCRequest{reqid: reqid, proc: :version, extra_data: %{"vsn": OTC.version}}
-    payload = OTC.RPCResponse.encode(request)
+  def handle_packet(%OTC.P2PPacket{proc: :version, extra_data: extra_data}, state = %{socket: socket, transport: transport}) do
+    request = %OTC.P2PPacket{proc: :version, extra_data: %{"vsn": OTC.version}}
+    payload = OTC.P2PPacket.encode(request)
     transport.send(socket, payload)
     if extra_data["vsn"] == OTC.version do
-      request = %OTC.RPCRequest{reqid: reqid, proc: :versionack}
-      payload = OTC.RPCResponse.encode(request)
+      request = %OTC.P2PPacket{proc: :versionack}
+      payload = OTC.P2PPacket.encode(request)
       transport.send(socket, payload)
     end
     state
   end
   
-  def handle_rpc(%OTC.RPCRequest{reqid: reqid, proc: :heartbeat, extra_data: []}, state = %{socket: socket, transport: transport}) do
-    response = %OTC.RPCResponse{reqid: reqid, errors: [], result: "heartbeat"}    
-    payload = OTC.RPCResponse.encode(response)
+  def handle_packet(%OTC.P2PPacket{proc: :ping, extra_data: []}, state = %{socket: socket, transport: transport}) do
+    response = %OTC.P2PPacket{proc: :pong}
+    payload = OTC.P2PPacket.encode(response)
     transport.send(socket, payload)
     state
   end
 
-  def handle_rpc(%OTC.RPCRequest{reqid: reqid, proc: :listpeers}, state = %{socket: socket, transport: transport}) do
+  def handle_packet(%OTC.P2PPacket{proc: :getaddr}, state = %{socket: socket, transport: transport}) do
     {:ok, peers} = Database.Peer.get_peers
-    response = %OTC.RPCResponse{reqid: reqid, errors: [], result: peers}
-    payload = OTC.RPCResponse.encode(response)
+    response = %OTC.P2PPacket{proc: :addrs, extra_data: peers}
+    payload = OTC.P2PPacket.encode(response)
     transport.send(socket, payload)
     state
   end
 
-  def handle_rpc({:addr, addr}, state) do
-    # TODO: verify addr, then broadcast to existing peers
-    Database.Peer.add_peer(addr)
-    state
-  end
-
-  def handle_rpc(request, state) do
+  def handle_packet(_, state) do
     Logger.warn "Invalid request "
     state
   end
