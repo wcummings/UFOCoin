@@ -65,7 +65,7 @@ defmodule OTC.P2P.ClientFSM do
   end
   
   def connected(:info, packet = %OTC.P2P.Packet{proc: :addr, extra_data: addrs}, data) do
-    # If theres only one addr, its a node advertising and the node should broadcast it
+    # If theres only one addr, its prolly a node advertising and the node should broadcast it
     if length(addrs) == 1 do
       [addr] = addrs
       addr_with_last_seen = OTC.P2P.AddrTable.get_addr(addr)
