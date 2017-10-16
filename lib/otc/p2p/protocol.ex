@@ -1,6 +1,8 @@
 require Logger
+require Amnesia
+require Amnesia.Helper
 
-defmodule OTC.P2PProtocol do
+defmodule OTC.P2P.Protocol do
   use GenServer
 
   @behaviour :ranch_protocol
@@ -18,7 +20,7 @@ defmodule OTC.P2PProtocol do
   end
 
   def handle_info({:tcp, _socket, data}, state) do
-    request = OTC.P2PPacket.decode(data)
+    request = OTC.P2P.Packet.decode(data)
     Logger.info "Received #{request.proc}"
     state = handle_packet(request, state)
     {:noreply, state}
@@ -29,35 +31,40 @@ defmodule OTC.P2PProtocol do
     {:stop, :normal, state}
   end
 
-  def handle_packet(%OTC.P2PPacket{proc: :version, extra_data: extra_data}, state = %{socket: socket, transport: transport}) do
-    request = %OTC.P2PPacket{proc: :version, extra_data: %{"vsn": OTC.version}}
-    payload = OTC.P2PPacket.encode(request)
+  def handle_packet(%OTC.P2P.Packet{proc: :version, extra_data: extra_data}, state = %{socket: socket, transport: transport}) do
+    request = %OTC.P2P.Packet{proc: :version, extra_data: %{"vsn": OTC.version}}
+    payload = OTC.P2P.Packet.encode(request)
     transport.send(socket, payload)
     if extra_data["vsn"] == OTC.version do
-      request = %OTC.P2PPacket{proc: :versionack}
-      payload = OTC.P2PPacket.encode(request)
+      request = %OTC.P2P.Packet{proc: :versionack}
+      payload = OTC.P2P.Packet.encode(request)
       transport.send(socket, payload)
     end
     state
   end
   
-  def handle_packet(%OTC.P2PPacket{proc: :ping, extra_data: []}, state = %{socket: socket, transport: transport}) do
-    response = %OTC.P2PPacket{proc: :pong}
-    payload = OTC.P2PPacket.encode(response)
+  def handle_packet(%OTC.P2P.Packet{proc: :ping, extra_data: []}, state = %{socket: socket, transport: transport}) do
+    response = %OTC.P2P.Packet{proc: :pong}
+    payload = OTC.P2P.Packet.encode(response)
     transport.send(socket, payload)
     state
   end
 
-  def handle_packet(%OTC.P2PPacket{proc: :getaddr}, state = %{socket: socket, transport: transport}) do
-    {:ok, peers} = Database.Peer.get_peers
-    response = %OTC.P2PPacket{proc: :addrs, extra_data: peers}
-    payload = OTC.P2PPacket.encode(response)
+  def handle_packet(%OTC.P2P.Packet{proc: :getaddrs}, state = %{socket: socket, transport: transport}) do
+    addrs = OTC.P2P.AddrTable.get_addrs
+    response = %OTC.P2P.Packet{proc: :addr, extra_data: addrs}
+    payload = OTC.P2P.Packet.encode(response)
     transport.send(socket, payload)
+    state
+  end
+
+  def handle_packet(%OTC.P2P.Packet{proc: :addr, extra_data: addrs}, state) do
+    OTC.P2P.AddrTable.add_addrs(addrs)
     state
   end
 
   def handle_packet(_, state) do
-    Logger.warn "Invalid request "
+    Logger.warn "Invalid request"
     state
   end
 end
