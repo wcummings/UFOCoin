@@ -8,9 +8,6 @@ defmodule OTC.P2P.ClientFSMSupervisor do
   end
 
   def init([]) do
-    outbound_connections = Application.get_env(OTC, :outbound_connections)
-    children = for _ <- 1 .. outbound_connections, do: OTC.P2P.ClientFSM
-
     Supervisor.init([OTC.P2P.ClientFSM], strategy: :simple_one_for_one)
   end
 

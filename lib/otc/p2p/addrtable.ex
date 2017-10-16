@@ -25,9 +25,14 @@ defmodule OTC.P2P.AddrTable do
 
   def get_addrs() do
     {:atomic, addrs} = :mnesia.transaction(fn -> :mnesia.match_object({Addr, :_, :_}) end)
-    Enum.map(addrs, fn ({Addr, {ip, port}, _last_seen}) ->
-      %OTC.P2P.Addr{ip: ip, port: port}
+    Enum.map(addrs, fn ({Addr, {ip, port}, last_seen}) ->
+      %OTC.P2P.Addr{ip: ip, port: port, last_seen: last_seen}
     end)
   end
 
+  def get_addr(%OTC.P2P.Addr{ip: ip, port: port}) do
+    {:atomic, {Addr, {^ip, ^port}, last_seen}} = :mnesia.transaction(fn -> :mnesia.read({ip, port}) end)
+    %OTC.P2P.Addr{ip: ip, port: port, last_seen: last_seen}
+  end
+  
 end

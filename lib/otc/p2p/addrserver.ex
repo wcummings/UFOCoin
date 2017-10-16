@@ -1,3 +1,5 @@
+require Logger
+
 defmodule OTC.P2P.AddrServer do
   use GenServer
 
@@ -19,15 +21,21 @@ defmodule OTC.P2P.AddrServer do
     {:ok, @initial_state}
   end
 
-  def handle_call(:checkout, from, state = %{addrs_by_ref: addrs_by_ref, pids_by_ref: pids_by_ref}) do
+  def handle_call(:checkout, {from, _}, state = %{addrs_by_ref: addrs_by_ref, pids_by_ref: pids_by_ref}) do
     addrs = OTC.P2P.AddrTable.get_addrs()
     connected_addrs = Map.values(addrs_by_ref)
-    eligible_addrs = Enum.filter(addrs, fn addr -> Enum.member?(connected_addrs, addr) end)
+    |> Enum.map(fn (%OTC.P2P.Addr{ip: ip, port: port}) -> {ip, port} end)
+    
+    eligible_addrs = Enum.filter(addrs, fn (%OTC.P2P.Addr{ip: ip, port: port}) ->
+      not Enum.member?(connected_addrs, {ip, port})
+    end)
+    
     if length(eligible_addrs) > 0 do
       [addr] = Enum.take_random(eligible_addrs, 1)
       ref = Process.monitor(from)
       addrs_by_ref = Map.put(addrs_by_ref, ref, addr)
       pids_by_ref = Map.put(pids_by_ref, ref, from)
+      Logger.info "Checked out #{addr.ip}:#{addr.port}"
       {:reply, {:ok, addr}, %{state | addrs_by_ref: addrs_by_ref, pids_by_ref: pids_by_ref}}
     else
       {:reply, {:error, :exhausted}, state}
@@ -40,8 +48,10 @@ defmodule OTC.P2P.AddrServer do
   end
 
   def handle_info({:DOWN, ref, _, _, _}, state = %{addrs_by_ref: addrs_by_ref, pids_by_ref: pids_by_ref}) do
+    addr = addrs_by_ref[ref]
     addrs_by_ref = Map.delete(addrs_by_ref, ref)
     pids_by_ref = Map.delete(pids_by_ref, ref)
+    Logger.info "Released #{addr.ip}:#{addr.port}"
     {:noreply, %{state | addrs_by_ref: addrs_by_ref, pids_by_ref: pids_by_ref}}
   end
 
