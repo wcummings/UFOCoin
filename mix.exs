@@ -30,6 +30,7 @@ defmodule OTC.Mixfile do
   defp deps do
     [{:ranch, "~> 1.4.0"},
      {:msgpack, "~> 0.7.0"},
-     {:dialyxir, "~> 0.5", only: [:dev], runtime: false}]
+     {:dialyxir, "~> 0.5", only: [:dev], runtime: false},
+     {:distillery, "~> 1.5", runtime: false}]
   end
 end
