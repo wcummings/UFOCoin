@@ -31,7 +31,7 @@ defmodule OTC.P2P.ClientFSM do
 	Logger.info "Connecting... #{ip}:#{port}"
 	{:ok, client} = OTC.P2P.Client.start_link(self(), ip, port)
 	send self(), :start_handshake
-	{:next_state, :starting_handshake, %{data | ip: ip, port: port}}
+	{:next_state, :starting_handshake, %{data | ip: ip, port: port, client: client}}
       # Throttle retries when the node has not discovered enough peers yet
       {:error, :exhausted} ->
 	Logger.info "Not enough peers in database, waiting 10s before retrying..."
