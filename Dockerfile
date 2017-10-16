@@ -1,10 +1,9 @@
 FROM ubuntu
+RUN apt-get update && apt-get install -y libssl1.0.0
 RUN mkdir -p /app
-WORKDIR /tmp
-RUN apt-get update && apt-get install -y wget
-RUN wget https://packages.erlang-solutions.com/erlang-solutions_1.0_all.deb
-RUN dpkg -i erlang-solutions_1.0_all.deb
-RUN apt-get update && apt-get install -y elixir
-COPY _build/dev/rel/* /app/
-WORKDIR /app
-CMD ["/app/bin/otc", "foreground"]
+COPY _build/* /app/
+RUN locale-gen en_US.UTF-8
+ENV LANG en_US.UTF-8
+ENV LANGUAGE en_US.UTF-8
+ENV LC_ALL en_US.UTF-8
+CMD ["/app/rel/otc/bin/otc", "foreground"]
