@@ -28,3 +28,11 @@ use Mix.Config
 # here (which is why it is important to import them last).
 #
 #     import_config "#{Mix.env}.exs"
+
+config OTC,
+  port: 9009,
+  ip: 0,
+  outbound_connections: 5,
+  seed_nodes: [{"52.205.252.214", 9009}]
+
+config :logger, :console, metadata: [:module, :function, :line]

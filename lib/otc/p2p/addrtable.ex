@@ -1,3 +1,5 @@
+require Logger
+
 defmodule OTC.P2P.AddrTable do
 
   def init() do
@@ -5,6 +7,7 @@ defmodule OTC.P2P.AddrTable do
   end
 
   def add_addr(%OTC.P2P.Addr{ip: ip, port: port}) do
+    Logger.info "Writing addr to mnesia: #{ip}:#{port}"
     {:atomic, result} = :mnesia.transaction(fn -> :mnesia.write({Addr, {ip, port}, :os.system_time(:millisecond)}) end)
     result
   end
@@ -13,6 +16,7 @@ defmodule OTC.P2P.AddrTable do
   def add_addrs(addrs) do
     {:atomic, result} = :mnesia.transaction(fn ->
       Enum.each(addrs, fn (%OTC.P2P.Addr{ip: ip, port: port}) ->
+	Logger.info "Writing addr to mnesia: #{ip}:#{port}"	
 	:mnesia.write({Addr, {ip, port}, :os.system_time(:millisecond)})
       end)
     end)

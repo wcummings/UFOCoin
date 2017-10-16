@@ -3,11 +3,20 @@ defmodule OTC do
   Documentation for OTC.
   """
 
-  @version "alpha broadway 0.0001"
+  @version "alpha broadway tango"
   
-  def start_link(port) do
+  def start_link() do
+    port = Application.get_env(OTC, :port)
     mnesia_tables = [OTC.P2P.AddrTable]
     Enum.each(mnesia_tables, fn (table) -> table.init end)
+    # Insert seed nodes
+    seed_nodes = Application.get_env(OTC, :seed_nodes)
+    Enum.each(seed_nodes, fn ({ip, port}) ->
+      OTC.P2P.AddrTable.add_addr(%OTC.P2P.Addr{ip: ip, port: port})
+    end)
+    {:ok, _} = OTC.Supervisor.start_link
+    outbound_connections = Application.get_env(OTC, :outbound_connections)
+    for _ <- 1 .. outbound_connections, do: {:ok, _} = OTC.P2P.ClientFSMSupervisor.start_client
     :ranch.start_listener(make_ref(), :ranch_tcp, [{:port, port}], OTC.P2P.Protocol, [])
   end
 

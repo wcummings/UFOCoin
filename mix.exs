@@ -15,7 +15,7 @@ defmodule OTC.Mixfile do
   # Type "mix help compile.app" for more information
   def application do
     # Specify extra applications you'll use from Erlang/Elixir
-    [extra_applications: [:logger, :ranch, :msgpack, :amnesia, :uuid, :mnesia]]
+    [extra_applications: [:logger, :ranch, :msgpack, :uuid, :mnesia]]
   end
 
   # Dependencies can be Hex packages:

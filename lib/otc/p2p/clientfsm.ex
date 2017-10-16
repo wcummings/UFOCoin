@@ -5,9 +5,31 @@ defmodule OTC.P2P.ClientFSM do
 
   @initial_state %{client: nil}
   @handshake_timeout_ms 10000
+
+  def start_link(opts) do
+    case OTC.P2P.AddrServer.checkout() do
+      {:ok, %OTC.P2P.Addr{ip: ip, port: port}} ->
+	start_link(ip, port)
+      # Throttle retries when the node has not discovered enough peers yet
+      {:error, :exhausted} ->
+	  Logger.info "Not enough peers in database, waiting 10s before retrying..."
+	  :timer.sleep(10 * 1000)
+	  start_link(opts)
+    end
+  end
   
   def start_link(host, port) do
     :gen_statem.start_link(__MODULE__, [host, port], [])
+  end
+
+  def child_spec(opts) do
+    %{
+      id: __MODULE__,
+      restart: :permanent,
+      shutdown: 5000,
+      start: {__MODULE__, :start_link, [[]]},
+      type: :worker
+    }
   end
 
   def init([host, port]) do
@@ -21,8 +43,8 @@ defmodule OTC.P2P.ClientFSM do
     {:next_state, :waiting_for_handshake, data, @handshake_timeout_ms}
   end
 
-  def waiting_for_handshake(:info, %OTC.P2P.Packet{proc: :version, extra_data: %{"vsn" => version}}, data) do
-    if OTC.version != version do
+  def waiting_for_handshake(:info, %OTC.P2P.Packet{proc: :version, extra_data: version_string}, data) do
+    if OTC.version != version_string do
       {:stop, :normal}
     else
       {:keep_state, data}
@@ -31,7 +53,7 @@ defmodule OTC.P2P.ClientFSM do
 
   def waiting_for_handshake(:info, %OTC.P2P.Packet{proc: :versionack}, data = %{client: client}) do
     OTC.P2P.Client.getaddrs(client)
-    # OTC.P2PClient.addr(client)
+    OTC.P2P.Client.addr(client)
     {:next_state, :connected, data}
   end
 

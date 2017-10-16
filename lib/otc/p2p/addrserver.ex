@@ -3,8 +3,8 @@ defmodule OTC.P2P.AddrServer do
 
   @initial_state %{addrs_by_ref: %{}, pids_by_ref: %{}}
   
-  def start_link() do
-    GenServer.start_link({:local, __MODULE__}, __MODULE__, [])
+  def start_link(opts) do
+    GenServer.start_link(__MODULE__, [], opts)
   end
 
   def checkout() do

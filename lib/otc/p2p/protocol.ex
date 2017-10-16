@@ -1,6 +1,4 @@
 require Logger
-require Amnesia
-require Amnesia.Helper
 
 defmodule OTC.P2P.Protocol do
   use GenServer
@@ -8,7 +6,8 @@ defmodule OTC.P2P.Protocol do
   @behaviour :ranch_protocol
 
   def start_link(ref, socket, transport, _opts) do
-    Logger.info "New connection"    
+    {:ok, {address, port}} = :inet.peername(socket)
+    Logger.info "New connection from #{address}:#{port}"
     pid = :proc_lib.spawn_link(__MODULE__, :init, [ref, socket, transport])
     {:ok, pid}
   end
@@ -21,21 +20,23 @@ defmodule OTC.P2P.Protocol do
 
   def handle_info({:tcp, _socket, data}, state) do
     request = OTC.P2P.Packet.decode(data)
-    Logger.info "Received #{request.proc}"
+    Logger.info "Received command #{request.proc}"
     state = handle_packet(request, state)
     {:noreply, state}
   end
   
   def handle_info({:tcp_closed, socket}, state = %{socket: socket, transport: transport}) do
-    transport.close(socket)
+    {:ok, {address, port}} = :inet.peername(socket)    
+    Logger.info "Closing connection from #{address}:#{port}"
+    :ok = transport.close(socket)
     {:stop, :normal, state}
   end
 
-  def handle_packet(%OTC.P2P.Packet{proc: :version, extra_data: extra_data}, state = %{socket: socket, transport: transport}) do
-    request = %OTC.P2P.Packet{proc: :version, extra_data: %{"vsn": OTC.version}}
+  def handle_packet(%OTC.P2P.Packet{proc: :version, extra_data: version_string}, state = %{socket: socket, transport: transport}) do
+    request = %OTC.P2P.Packet{proc: :version, extra_data: OTC.version}
     payload = OTC.P2P.Packet.encode(request)
-    transport.send(socket, payload)
-    if extra_data["vsn"] == OTC.version do
+    :ok = transport.send(socket, payload)
+    if version_string == OTC.version do
       request = %OTC.P2P.Packet{proc: :versionack}
       payload = OTC.P2P.Packet.encode(request)
       transport.send(socket, payload)
@@ -43,7 +44,7 @@ defmodule OTC.P2P.Protocol do
     state
   end
   
-  def handle_packet(%OTC.P2P.Packet{proc: :ping, extra_data: []}, state = %{socket: socket, transport: transport}) do
+  def handle_packet(%OTC.P2P.Packet{proc: :ping}, state = %{socket: socket, transport: transport}) do
     response = %OTC.P2P.Packet{proc: :pong}
     payload = OTC.P2P.Packet.encode(response)
     transport.send(socket, payload)

@@ -15,7 +15,7 @@ defmodule OTC.P2P.Client do
   end
 
   def version(pid) do
-    GenServer.cast(pid, %OTC.P2P.Packet{proc: :version, extra_data: %{"vsn": OTC.version}})
+    GenServer.cast(pid, %OTC.P2P.Packet{proc: :version, extra_data: OTC.version})
   end
   
   def ping(pid) do
@@ -24,6 +24,12 @@ defmodule OTC.P2P.Client do
 
   def getaddrs(pid) do
     GenServer.cast(pid, %OTC.P2P.Packet{proc: :getaddrs})
+  end
+
+  def addr(pid) do
+    {:ok, ip} = Application.get_env(OTC, :ip)
+    {:ok, port} = Application.get_env(OTC, :port)
+    GenServer.cast(pid, %OTC.P2P.Packet{proc: :addr, extra_data: [%OTC.P2P.Addr{ip: ip, port: port}]})
   end
   
   def init([pid, host, port]) do
@@ -36,14 +42,6 @@ defmodule OTC.P2P.Client do
     :ok = :gen_tcp.send(socket, payload)
     {:noreply, state}    
   end
-
-  # def handle_cast(:addr, state = %{socket: socket}) do
-  #   Logger.info "Sending addr message"
-  #   request = %OTC.P2PPacket{proc: :addr, extra_data: []} # FIXME
-  #   payload = OTC.P2PPacket.encode(request)
-  #   :ok = :gen_tcp.send(socket, payload)
-  #   {:noreply, state}
-  # end
 
   def handle_info({:tcp, socket, data}, state = %{socket: socket}) do
     response = OTC.P2P.Packet.decode(data)
