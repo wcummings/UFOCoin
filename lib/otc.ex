@@ -1,3 +1,5 @@
+require Logger
+
 defmodule OTC do
   @moduledoc """
   Documentation for OTC.
@@ -5,7 +7,8 @@ defmodule OTC do
 
   @version "alpha broadway tango"
   
-  def start_link() do
+  def start(_, _) do
+    Logger.info "Starting the One True Chain"
     port = Application.get_env(OTC, :port)
     mnesia_tables = [OTC.P2P.AddrTable]
     Enum.each(mnesia_tables, fn (table) -> table.init end)

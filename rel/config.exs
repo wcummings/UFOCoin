@@ -46,9 +46,6 @@ end
 
 release :otc do
   set version: current_version(:otc)
-  set applications: [
-    :runtime_tools,
-    :crypto
-  ]
+  set applications: [:otc]
 end
 

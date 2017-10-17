@@ -36,3 +36,4 @@ config OTC,
   seed_nodes: [{"52.205.252.214", 9009}]
 
 config :logger, :console, metadata: [:module, :function, :line]
+
