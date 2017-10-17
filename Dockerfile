@@ -1,5 +1,14 @@
 FROM ubuntu
-RUN apt-get update && apt-get install -y libssl1.0.0
+WORKDIR /tmp
+RUN apt-get update && apt-get install -y wget
+RUN wget https://packages.erlang-solutions.com/erlang-solutions_1.0_all.deb
+RUN dpkg -i erlang-solutions_1.0_all.deb
+RUN apt-get update && apt-get install -y elixir
+RUN mkdir -p /tmp/build
+COPY . build
+WORKDIR /tmp/build
+RUN mix local.hex --force
+RUN MIX_ENV=prod mix release --env=prod
 RUN mkdir -p /app
 COPY _build/prod/rel/otc/releases/0.1.0/otc.tar.gz /app
 WORKDIR /app/
