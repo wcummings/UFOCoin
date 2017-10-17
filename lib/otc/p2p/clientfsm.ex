@@ -60,7 +60,7 @@ defmodule OTC.P2P.ClientFSM do
     {:next_state, :connected, data}
   end
 
-  def waiting_for_handshake(:state_timeout, _, _data) do
+  def waiting_for_handshake(:timeout, _, _data) do
     {:stop, :normal}
   end
   
