@@ -1,0 +1,18 @@
+version: '2'
+
+services:
+  seed-node:
+    build: .
+  n2:
+    build: .
+    links:
+      - seed-node
+  # n3:
+  #   build: .
+  #   links:
+  #     - seed-node
+  # n4:
+  #   build: .
+  #   links:
+  #     - seed-node
+        

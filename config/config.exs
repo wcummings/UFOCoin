@@ -33,7 +33,7 @@ config :otc,
   port: 9009,
   ip: 0,
   outbound_connections: 5,
-  seed_nodes: [{"52.205.252.214", 9009}]
+  seed_nodes: [{"seed-node", 9009}]
 
 config :logger, :console, metadata: [:module, :function, :line]
 
