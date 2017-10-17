@@ -33,6 +33,7 @@ defmodule OTC.P2P.Client do
   end
   
   def init([pid, host, port]) do
+    # FIXME: implement retries here
     {:ok, socket} = :gen_tcp.connect(:erlang.binary_to_list(host), port, [:binary, active: true, packet: 4])
     Logger.info "2"    
     {:ok, %{@initial_state | socket: socket, host: host, port: port, pid: pid}}

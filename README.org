@@ -1,0 +1,9 @@
+* (The) One True Chain
+
+** What (barely) works?
+
+   - [X] Peer discovery
+
+** TODO
+
+   - [ ] Everything else
