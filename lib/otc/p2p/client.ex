@@ -27,8 +27,8 @@ defmodule OTC.P2P.Client do
   end
 
   def addr(pid) do
-    {:ok, ip} = Application.get_env(OTC, :ip)
-    {:ok, port} = Application.get_env(OTC, :port)
+    {:ok, ip} = Application.get_env(:otc, :ip)
+    {:ok, port} = Application.get_env(:otc, :port)
     GenServer.cast(pid, %OTC.P2P.Packet{proc: :addr, extra_data: [%OTC.P2P.Addr{ip: ip, port: port}]})
   end
   

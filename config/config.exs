@@ -29,7 +29,7 @@ use Mix.Config
 #
 #     import_config "#{Mix.env}.exs"
 
-config OTC,
+config :otc,
   port: 9009,
   ip: 0,
   outbound_connections: 5,
