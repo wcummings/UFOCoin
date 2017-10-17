@@ -8,9 +8,11 @@ RUN mkdir -p /tmp/build
 COPY . build
 WORKDIR /tmp/build
 RUN mix local.hex --force
+RUN mix clean
+RUN mix compile
 RUN MIX_ENV=prod mix release --env=prod
 RUN mkdir -p /app
-COPY _build/prod/rel/otc/releases/0.1.0/otc.tar.gz /app
+RUN cp _build/prod/rel/otc/releases/0.1.0/otc.tar.gz /app
 WORKDIR /app/
 RUN tar -xvzf otc.tar.gz
 CMD ["/app/bin/otc", "foreground"]
