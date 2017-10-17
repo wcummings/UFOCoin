@@ -1,9 +1,9 @@
 * (The) One True Chain
 
-** What (barely) works?
+** What (barely) works
 
    - [X] Peer discovery
 
-** TODO
+** What doesn't work
 
    - [ ] Everything else
