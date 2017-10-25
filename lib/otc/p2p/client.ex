@@ -33,13 +33,12 @@ defmodule OTC.P2P.Client do
   end
   
   def init([pid, host, port]) do
-    # FIXME: implement retries here
     {:ok, socket} = :gen_tcp.connect(:erlang.binary_to_list(host), port, [:binary, active: true, packet: 4])
     {:ok, %{@initial_state | socket: socket, host: host, port: port, pid: pid}}
   end
 
   def handle_cast(packet = %OTC.P2P.Packet{}, state = %{socket: socket}) do
-    Logger.info "Sending #{packet.proc}"
+    Logger.info "Sending #{inspect(packet)}"
     payload = OTC.P2P.Packet.encode(packet)
     :ok = :gen_tcp.send(socket, payload)
     {:noreply, state}    

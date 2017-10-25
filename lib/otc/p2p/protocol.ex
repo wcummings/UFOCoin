@@ -57,7 +57,7 @@ defmodule OTC.P2P.Protocol do
     addrs = OTC.P2P.AddrTable.get_addrs
     response = %OTC.P2P.Packet{proc: :addr, extra_data: addrs}
     payload = OTC.P2P.Packet.encode(response)
-    Logger.info "Sending addrs: #{inspect(payload)}"
+    Logger.info "Sending addrs: #{inspect(response)}"
     transport.send(socket, payload)
     state
   end

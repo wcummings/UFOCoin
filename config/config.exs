@@ -32,6 +32,7 @@ use Mix.Config
 config :otc,
   default_port: 9009,
   port: 9009,
+  detect_ip: true,
   ip: "127.0.0.1",
   outbound_connections: 5,
   # seed_nodes: [{"seed-node", 9009}]
