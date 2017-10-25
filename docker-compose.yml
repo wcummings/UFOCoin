@@ -46,6 +46,3 @@ networks:
     ipam:
       config:
         - subnet: 172.5.0.0/16
-          #gateway: 172.5.0.1
-          #aux_addresses:
-            #seed-node: 172.5.0.99
