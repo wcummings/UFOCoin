@@ -1,5 +1,8 @@
 require Logger
 
+alias OTC.P2P.Packet, as: P2PPacket
+alias OTC.P2P.AddrTable, as: P2PAddrTable
+
 defmodule OTC.P2P.Protocol do
   use GenServer
 
@@ -20,7 +23,7 @@ defmodule OTC.P2P.Protocol do
   end
 
   def handle_info({:tcp, _socket, data}, state) do
-    request = OTC.P2P.Packet.decode(data)
+    request = P2PPacket.decode(data)
     Logger.info "Received command #{inspect(request)}"
     state = handle_packet(request, state)
     {:noreply, state}
@@ -34,39 +37,39 @@ defmodule OTC.P2P.Protocol do
     {:stop, :normal, state}
   end
 
-  def handle_packet(%OTC.P2P.Packet{proc: :version, extra_data: version_string}, state = %{socket: socket, transport: transport}) do
-    request = %OTC.P2P.Packet{proc: :version, extra_data: OTC.version}
-    payload = OTC.P2P.Packet.encode(request)
+  def handle_packet(%P2PPacket{proc: :version, extra_data: version_string}, state = %{socket: socket, transport: transport}) do
+    request = %P2PPacket{proc: :version, extra_data: OTC.version}
+    payload = P2PPacket.encode(request)
     :ok = transport.send(socket, payload)
     if version_string == OTC.version do
-      request = %OTC.P2P.Packet{proc: :versionack}
-      payload = OTC.P2P.Packet.encode(request)
+      request = %P2PPacket{proc: :versionack}
+      payload = P2PPacket.encode(request)
       transport.send(socket, payload)
     end
     state
   end
   
-  def handle_packet(%OTC.P2P.Packet{proc: :ping}, state = %{socket: socket, transport: transport}) do
-    response = %OTC.P2P.Packet{proc: :pong}
-    payload = OTC.P2P.Packet.encode(response)
+  def handle_packet(%P2PPacket{proc: :ping}, state = %{socket: socket, transport: transport}) do
+    response = %P2PPacket{proc: :pong}
+    payload = P2PPacket.encode(response)
     transport.send(socket, payload)
     state
   end
 
-  def handle_packet(%OTC.P2P.Packet{proc: :getaddrs}, state = %{socket: socket, transport: transport}) do
-    addrs = OTC.P2P.AddrTable.get_addrs
-    response = %OTC.P2P.Packet{proc: :addr, extra_data: addrs}
-    payload = OTC.P2P.Packet.encode(response)
+  def handle_packet(%P2PPacket{proc: :getaddrs}, state = %{socket: socket, transport: transport}) do
+    addrs = P2PAddrTable.get_addrs
+    response = %P2PPacket{proc: :addr, extra_data: addrs}
+    payload = P2PPacket.encode(response)
     Logger.info "Sending addrs: #{inspect(response)}"
     transport.send(socket, payload)
     state
   end
 
-  def handle_packet(%OTC.P2P.Packet{proc: :addr, extra_data: addrs}, state) do
+  def handle_packet(%P2PPacket{proc: :addr, extra_data: addrs}, state) do
     ip = Application.get_env(:otc, :ip)
     port = Application.get_env(:otc, :port)
     Enum.filter(addrs, fn (addr) -> {addr.ip, addr.port} != {ip, port} end) 
-    |> OTC.P2P.AddrTable.add_addrs
+    |> P2PAddrTable.add_addrs
     state
   end
 

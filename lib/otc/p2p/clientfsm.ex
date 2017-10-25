@@ -1,5 +1,11 @@
 require Logger
 
+alias OTC.P2P.Client, as: P2PClient
+alias OTC.P2P.AddrServer, as: P2PAddrServer
+alias OTC.P2P.Addr, as: P2PAddr
+alias OTC.P2P.Packet, as: P2PPacket
+alias OTC.P2P.AddrTable, as: P2PAddrTable
+
 defmodule OTC.P2P.ClientFSM do
   @behaviour :gen_statem
 
@@ -26,8 +32,8 @@ defmodule OTC.P2P.ClientFSM do
   end
 
   def checkout_addr(:info, :checkout, data) do
-    case OTC.P2P.AddrServer.checkout do
-      {:ok, %OTC.P2P.Addr{ip: ip, port: port}} ->
+    case P2PAddrServer.checkout do
+      {:ok, %P2PAddr{ip: ip, port: port}} ->
 	Logger.info "Connecting... #{ip}:#{port}"
 	{:next_state, :connecting, %{data | ip: ip, port: port}, 0}
       # Throttle retries when the node has not discovered enough peers yet
@@ -39,7 +45,7 @@ defmodule OTC.P2P.ClientFSM do
   end
 
   def connecting(:timeout, _, data = %{ip: ip, port: port}) do
-    case OTC.P2P.Client.start_link(self(), ip, port) do
+    case P2PClient.start_link(self(), ip, port) do
       {:ok, client} ->
 	{:next_state, :starting_handshake, %{data | ip: ip, port: port, client: client}, 0}
       {:error, error} ->
@@ -53,11 +59,11 @@ defmodule OTC.P2P.ClientFSM do
   end
   
   def starting_handshake(:timeout, _, data = %{client: client}) do
-    OTC.P2P.Client.version(client)
+    P2PClient.version(client)
     {:next_state, :waiting_for_handshake, data, @handshake_timeout_ms}
   end
 
-  def waiting_for_handshake(:info, %OTC.P2P.Packet{proc: :version, extra_data: version_string}, data) do
+  def waiting_for_handshake(:info, %P2PPacket{proc: :version, extra_data: version_string}, data) do
     if OTC.version != version_string do
       {:stop, :normal}
     else
@@ -65,9 +71,9 @@ defmodule OTC.P2P.ClientFSM do
     end
   end
 
-  def waiting_for_handshake(:info, %OTC.P2P.Packet{proc: :versionack}, data = %{client: client}) do
-    OTC.P2P.Client.getaddrs(client)
-    OTC.P2P.Client.addr(client)
+  def waiting_for_handshake(:info, %P2PPacket{proc: :versionack}, data = %{client: client}) do
+    P2PClient.getaddrs(client)
+    P2PClient.addr(client)
     Logger.info "Connected #{data.ip}:#{data.port}"
     {:next_state, :connected, data}
   end
@@ -77,21 +83,21 @@ defmodule OTC.P2P.ClientFSM do
     {:stop, :normal}
   end
   
-  def connected(:info, packet = %OTC.P2P.Packet{proc: :addr, extra_data: addrs}, data) do
+  def connected(:info, packet = %P2PPacket{proc: :addr, extra_data: addrs}, data) do
     # If theres only one addr, its prolly a node advertising and the node should broadcast it
     if length(addrs) == 1 do
       [addr] = addrs
-      addr_with_last_seen = OTC.P2P.AddrTable.get_addr(addr)
+      addr_with_last_seen = P2PAddrTable.get_addr(addr)
       if (addr_with_last_seen.last_seen + 10 * 1000 < :os.system_time(:millisecond)) do
-	OTC.P2P.AddrServer.broadcast(packet)
+	P2PAddrServer.broadcast(packet)
       end
     end
-    OTC.P2P.AddrTable.add_addrs(addrs)
+    P2PAddrTable.add_addrs(addrs)
     {:keep_state, data}
   end
 
-  def connected(:cast, {:broadcast, packet = %OTC.P2P.Packet{}}, %{client: client}) do
-    OTC.P2P.Client.send_packet(client, packet)
+  def connected(:cast, {:broadcast, packet = %P2PPacket{}}, %{client: client}) do
+    P2PClient.send_packet(client, packet)
     :keep_state_and_data
   end
   

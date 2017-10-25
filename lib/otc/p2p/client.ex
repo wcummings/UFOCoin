@@ -1,5 +1,8 @@
 require Logger
 
+alias OTC.P2P.Packet, as: P2PPacket
+alias OTC.P2P.Addr, as: P2PAddr
+
 defmodule OTC.P2P.Client do
   use GenServer
 
@@ -23,26 +26,26 @@ defmodule OTC.P2P.Client do
     end
   end
 
-  def send_packet(pid, packet = %OTC.P2P.Packet{}) do
+  def send_packet(pid, packet = %P2PPacket{}) do
     GenServer.cast(pid, packet)
   end
   
   def version(pid) do
-    GenServer.cast(pid, %OTC.P2P.Packet{proc: :version, extra_data: OTC.version})
+    GenServer.cast(pid, %P2PPacket{proc: :version, extra_data: OTC.version})
   end
   
   def ping(pid) do
-    GenServer.cast(pid, %OTC.P2P.Packet{proc: :ping})
+    GenServer.cast(pid, %P2PPacket{proc: :ping})
   end
 
   def getaddrs(pid) do
-    GenServer.cast(pid, %OTC.P2P.Packet{proc: :getaddrs})
+    GenServer.cast(pid, %P2PPacket{proc: :getaddrs})
   end
 
   def addr(pid) do
     ip = Application.get_env(:otc, :ip)
     port = Application.get_env(:otc, :port)
-    GenServer.cast(pid, %OTC.P2P.Packet{proc: :addr, extra_data: [%OTC.P2P.Addr{ip: ip, port: port}]})
+    GenServer.cast(pid, %P2PPacket{proc: :addr, extra_data: [%P2PAddr{ip: ip, port: port}]})
   end
   
   def init([pid, ip, port, socket]) do
@@ -50,15 +53,15 @@ defmodule OTC.P2P.Client do
     {:ok, %{@initial_state | socket: socket, ip: ip, port: port, pid: pid}}
   end
 
-  def handle_cast(packet = %OTC.P2P.Packet{}, state = %{socket: socket}) do
+  def handle_cast(packet = %P2PPacket{}, state = %{socket: socket}) do
     Logger.info "Sending #{inspect(packet)}"
-    payload = OTC.P2P.Packet.encode(packet)
+    payload = P2PPacket.encode(packet)
     :ok = :gen_tcp.send(socket, payload)
     {:noreply, state}    
   end
 
   def handle_info({:tcp, socket, data}, state = %{socket: socket}) do
-    response = OTC.P2P.Packet.decode(data)
+    response = P2PPacket.decode(data)
     send state.pid, response
     {:noreply, state}
   end
