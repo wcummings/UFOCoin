@@ -5,6 +5,7 @@ Repo for me to experiment with Bitcoin and blockchain related concepts.
 ** What (barely) works
 
    - [X] Peer discovery
+   - [X] Broadcast
 
 ** What doesn't work
 
