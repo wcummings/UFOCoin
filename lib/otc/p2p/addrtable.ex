@@ -31,7 +31,7 @@ defmodule OTC.P2P.AddrTable do
   end
 
   def get_addr(%OTC.P2P.Addr{ip: ip, port: port}) do
-    {:atomic, {Addr, {^ip, ^port}, last_seen}} = :mnesia.transaction(fn -> :mnesia.read({ip, port}) end)
+    {:atomic, [{Addr, {^ip, ^port}, last_seen}]} = :mnesia.transaction(fn -> :mnesia.read(Addr, {ip, port}) end)
     %OTC.P2P.Addr{ip: ip, port: port, last_seen: last_seen}
   end
   

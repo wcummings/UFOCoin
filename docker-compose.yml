@@ -3,16 +3,42 @@ version: '2'
 services:
   seed-node:
     build: .
+    networks:
+      test:
+        ipv4_address: 172.5.0.99
+    ports:
+      - "9009"
   n2:
     build: .
-    links:
-      - seed-node
-  # n3:
-  #   build: .
-  #   links:
-  #     - seed-node
-  # n4:
-  #   build: .
-  #   links:
-  #     - seed-node
-        
+    networks:
+     - test
+    ports:
+      - "9009"
+  n3:
+    build: .
+    networks:
+     - test
+    ports:
+      - "9009"
+  n4:
+    build: .
+    networks:
+     - test
+    ports:
+      - "9009"
+  n5:
+    build: .
+    networks:
+     - test
+    ports:
+      - "9009"
+
+networks:
+  test:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.5.0.0/16
+          #gateway: 172.5.0.1
+          #aux_addresses:
+            #seed-node: 172.5.0.99

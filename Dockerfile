@@ -7,6 +7,8 @@ RUN apt-get update && apt-get install -y elixir
 RUN mkdir -p /tmp/build
 COPY . build
 WORKDIR /tmp/build
+RUN sed -i "s/127.0.0.1/$(awk 'END{print $1}' /etc/hosts)/g" ./config/config.exs
+RUN cat ./config/config.exs
 RUN mix local.hex --force
 RUN mix clean
 RUN mix compile

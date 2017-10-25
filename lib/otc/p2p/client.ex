@@ -27,19 +27,19 @@ defmodule OTC.P2P.Client do
   end
 
   def addr(pid) do
-    {:ok, ip} = Application.get_env(:otc, :ip)
-    {:ok, port} = Application.get_env(:otc, :port)
+    ip = Application.get_env(:otc, :ip)
+    port = Application.get_env(:otc, :port)
     GenServer.cast(pid, %OTC.P2P.Packet{proc: :addr, extra_data: [%OTC.P2P.Addr{ip: ip, port: port}]})
   end
   
   def init([pid, host, port]) do
     # FIXME: implement retries here
     {:ok, socket} = :gen_tcp.connect(:erlang.binary_to_list(host), port, [:binary, active: true, packet: 4])
-    Logger.info "2"    
     {:ok, %{@initial_state | socket: socket, host: host, port: port, pid: pid}}
   end
 
   def handle_cast(packet = %OTC.P2P.Packet{}, state = %{socket: socket}) do
+    Logger.info "Sending #{packet.proc}"
     payload = OTC.P2P.Packet.encode(packet)
     :ok = :gen_tcp.send(socket, payload)
     {:noreply, state}    

@@ -35,7 +35,7 @@ defmodule OTC.P2P.ClientFSM do
       # Throttle retries when the node has not discovered enough peers yet
       {:error, :exhausted} ->
 	Logger.info "Not enough peers in database, waiting 10s before retrying..."
-	Process.send_after(self(), :checkout, 10 * 1000, [])
+	Process.send_after(self(), :checkout, 10 * 1000)
 	{:keep_state, data}
     end
   end

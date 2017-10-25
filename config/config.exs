@@ -30,10 +30,12 @@ use Mix.Config
 #     import_config "#{Mix.env}.exs"
 
 config :otc,
+  default_port: 9009,
   port: 9009,
-  ip: 0,
+  ip: "127.0.0.1",
   outbound_connections: 5,
-  seed_nodes: [{"seed-node", 9009}]
+  # seed_nodes: [{"seed-node", 9009}]
+  seed_dns: 'test1.wpc.io'
 
 config :logger, :console, metadata: [:module, :function, :line]
 

@@ -7,7 +7,8 @@ defmodule OTC.P2P.Protocol do
 
   def start_link(ref, socket, transport, _opts) do
     {:ok, {address, port}} = :inet.peername(socket)
-    Logger.info "New connection from #{address}:#{port}"
+    address_string = :inet.ntoa(address)
+    Logger.info "New connection from #{address_string}:#{port}"
     pid = :proc_lib.spawn_link(__MODULE__, :init, [ref, socket, transport])
     {:ok, pid}
   end
@@ -20,14 +21,15 @@ defmodule OTC.P2P.Protocol do
 
   def handle_info({:tcp, _socket, data}, state) do
     request = OTC.P2P.Packet.decode(data)
-    Logger.info "Received command #{request.proc}"
+    Logger.info "Received command #{inspect(request)}"
     state = handle_packet(request, state)
     {:noreply, state}
   end
   
   def handle_info({:tcp_closed, socket}, state = %{socket: socket, transport: transport}) do
-    {:ok, {address, port}} = :inet.peername(socket)    
-    Logger.info "Closing connection from #{address}:#{port}"
+    {:ok, {address, port}} = :inet.peername(socket)
+    address_string = :inet.ntoa(address)
+    Logger.info "Closing connection from #{address_string}:#{port}"
     :ok = transport.close(socket)
     {:stop, :normal, state}
   end
@@ -55,12 +57,16 @@ defmodule OTC.P2P.Protocol do
     addrs = OTC.P2P.AddrTable.get_addrs
     response = %OTC.P2P.Packet{proc: :addr, extra_data: addrs}
     payload = OTC.P2P.Packet.encode(response)
+    Logger.info "Sending addrs: #{inspect(payload)}"
     transport.send(socket, payload)
     state
   end
 
   def handle_packet(%OTC.P2P.Packet{proc: :addr, extra_data: addrs}, state) do
-    OTC.P2P.AddrTable.add_addrs(addrs)
+    ip = Application.get_env(:otc, :ip)
+    port = Application.get_env(:otc, :port)
+    Enum.filter(addrs, fn (addr) -> {addr.ip, addr.port} != {ip, port} end) 
+    |> OTC.P2P.AddrTable.add_addrs
     state
   end
 
@@ -68,4 +74,5 @@ defmodule OTC.P2P.Protocol do
     Logger.warn "Invalid request"
     state
   end
+  
 end

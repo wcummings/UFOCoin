@@ -25,9 +25,12 @@ defmodule OTC.P2P.AddrServer do
     addrs = OTC.P2P.AddrTable.get_addrs()
     connected_addrs = Map.values(addrs_by_ref)
     |> Enum.map(fn (%OTC.P2P.Addr{ip: ip, port: port}) -> {ip, port} end)
+
+    my_ip = Application.get_env(:otc, :ip)
+    my_port = Application.get_env(:otc, :port)
     
     eligible_addrs = Enum.filter(addrs, fn (%OTC.P2P.Addr{ip: ip, port: port}) ->
-      not Enum.member?(connected_addrs, {ip, port})
+      not Enum.member?(connected_addrs, {ip, port}) and {ip, port} != {my_ip, my_port}
     end)
     
     if length(eligible_addrs) > 0 do
