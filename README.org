@@ -2,6 +2,8 @@
 
 Repo for me to experiment with Bitcoin and blockchain related concepts.
 
+[[https://github.com/wcummings/OTC/blob/master/fault_tolerance.png]]
+
 ** What (barely) works
 
    - [X] Peer discovery
