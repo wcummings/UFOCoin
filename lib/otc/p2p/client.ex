@@ -23,6 +23,10 @@ defmodule OTC.P2P.Client do
     end
   end
 
+  def send_packet(pid, packet = %OTC.P2P.Packet{}) do
+    GenServer.cast(pid, packet)
+  end
+  
   def version(pid) do
     GenServer.cast(pid, %OTC.P2P.Packet{proc: :version, extra_data: OTC.version})
   end

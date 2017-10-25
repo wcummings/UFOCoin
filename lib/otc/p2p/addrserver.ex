@@ -46,7 +46,7 @@ defmodule OTC.P2P.AddrServer do
   end
 
   def handle_cast({:broadcast, packet}, state = %{pids_by_ref: pids_by_ref}) do
-    for pid <- Map.values(pids_by_ref), do: GenServer.cast(pid, packet)
+    for pid <- Map.values(pids_by_ref), do: GenServer.cast(pid, {:broadcast, packet})
     {:noreply, state}
   end
 

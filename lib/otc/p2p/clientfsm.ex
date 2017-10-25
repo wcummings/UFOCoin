@@ -89,6 +89,11 @@ defmodule OTC.P2P.ClientFSM do
     OTC.P2P.AddrTable.add_addrs(addrs)
     {:keep_state, data}
   end
+
+  def connected(:cast, {:broadcast, packet = %OTC.P2P.Packet{}}, %{client: client}) do
+    OTC.P2P.Client.send_packet(client, packet)
+    :keep_state_and_data
+  end
   
   def callback_mode, do: :state_functions
 
