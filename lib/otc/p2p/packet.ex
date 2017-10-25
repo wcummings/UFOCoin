@@ -1,3 +1,5 @@
+require Logger
+
 defmodule OTC.P2P.Packet do
   @enforce_keys [:proc]
   defstruct proc: nil, extra_data: []
@@ -18,6 +20,6 @@ defmodule OTC.P2P.Packet do
     {:ok, proc} = Map.fetch(request, :proc)
     extra_data = Map.get(request, :extra_data, [])
     %OTC.P2P.Packet{proc: proc, extra_data: extra_data}
-  end
+  end 
   
 end

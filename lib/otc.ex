@@ -11,14 +11,14 @@ defmodule OTC do
     Logger.info "Starting the One True Chain"
 
     mnesia_tables = [OTC.P2P.AddrTable]
-    Enum.each(mnesia_tables, fn (table) -> table.init end)
+    Enum.each(mnesia_tables, fn table -> table.init end)
 
     # Insert seed nodes
     # seed_nodes = Application.get_env(:otc, :seed_nodes)
     seed_nodes = lookup_seed_nodes()
     default_port = Application.get_env(:otc, :default_port)
 
-    Enum.each(seed_nodes, fn (ip) ->
+    Enum.each(seed_nodes, fn ip ->
       OTC.P2P.AddrTable.add_addr(%OTC.P2P.Addr{ip: ip, port: default_port})
     end)
     

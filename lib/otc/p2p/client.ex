@@ -4,14 +4,23 @@ defmodule OTC.P2P.Client do
   use GenServer
 
   @initial_state %{
-    host: nil,
+    ip: nil,
     port: nil,
     socket: nil,
     pid: nil
   }
+
+  @socket_opts [:binary, packet: 4]
   
-  def start_link(pid, host, port) do
-    GenServer.start_link(__MODULE__, [pid, host, port], [])
+  def start_link(pid, ip, port) do
+    case :gen_tcp.connect(:erlang.binary_to_list(ip), port, @socket_opts) do
+      {:ok, socket} ->
+	{:ok, client} = GenServer.start_link(__MODULE__, [pid, ip, port, socket], [])
+	:ok = :gen_tcp.controlling_process(socket, client)
+	{:ok, client}
+      {:error, error} ->
+	{:error, error}
+    end
   end
 
   def version(pid) do
@@ -32,9 +41,9 @@ defmodule OTC.P2P.Client do
     GenServer.cast(pid, %OTC.P2P.Packet{proc: :addr, extra_data: [%OTC.P2P.Addr{ip: ip, port: port}]})
   end
   
-  def init([pid, host, port]) do
-    {:ok, socket} = :gen_tcp.connect(:erlang.binary_to_list(host), port, [:binary, active: true, packet: 4])
-    {:ok, %{@initial_state | socket: socket, host: host, port: port, pid: pid}}
+  def init([pid, ip, port, socket]) do
+    :inet.setopts(socket, [{:active, true}|@socket_opts])
+    {:ok, %{@initial_state | socket: socket, ip: ip, port: port, pid: pid}}
   end
 
   def handle_cast(packet = %OTC.P2P.Packet{}, state = %{socket: socket}) do

@@ -3,7 +3,7 @@ require Logger
 defmodule OTC.P2P.ClientFSM do
   @behaviour :gen_statem
 
-  @initial_state %{client: nil, ip: nil, port: nil}
+  @initial_state %{client: nil, ip: nil, port: nil, retries: 0}
   @handshake_timeout_ms 10000
 
   def start_link(opts) do
@@ -29,9 +29,7 @@ defmodule OTC.P2P.ClientFSM do
     case OTC.P2P.AddrServer.checkout do
       {:ok, %OTC.P2P.Addr{ip: ip, port: port}} ->
 	Logger.info "Connecting... #{ip}:#{port}"
-	{:ok, client} = OTC.P2P.Client.start_link(self(), ip, port)
-	send self(), :start_handshake
-	{:next_state, :starting_handshake, %{data | ip: ip, port: port, client: client}}
+	{:next_state, :connecting, %{data | ip: ip, port: port}, 0}
       # Throttle retries when the node has not discovered enough peers yet
       {:error, :exhausted} ->
 	Logger.info "Not enough peers in database, waiting 10s before retrying..."
@@ -39,8 +37,22 @@ defmodule OTC.P2P.ClientFSM do
 	{:keep_state, data}
     end
   end
+
+  def connecting(:timeout, _, data = %{ip: ip, port: port}) do
+    case OTC.P2P.Client.start_link(self(), ip, port) do
+      {:ok, client} ->
+	{:next_state, :starting_handshake, %{data | ip: ip, port: port, client: client}, 0}
+      {:error, error} ->
+	Logger.info "Connection error: #{inspect(error)}"
+	if data.retries > 3 do # TODO: make this configurable
+	  {:next_state, :checkout_addr, @initial_state, 0}
+	else
+	  {:next_state, :connecting, %{data | retries: data.retries + 1}, 10 * 1000}
+	end
+    end
+  end
   
-  def starting_handshake(:info, :start_handshake, data = %{client: client}) do
+  def starting_handshake(:timeout, _, data = %{client: client}) do
     OTC.P2P.Client.version(client)
     {:next_state, :waiting_for_handshake, data, @handshake_timeout_ms}
   end
@@ -61,6 +73,7 @@ defmodule OTC.P2P.ClientFSM do
   end
 
   def waiting_for_handshake(:timeout, _, _data) do
+    Logger.info "Timeout waiting for handshake"
     {:stop, :normal}
   end
   
@@ -83,5 +96,5 @@ defmodule OTC.P2P.ClientFSM do
   def handle_event(_event, data), do: {:keep_state, data}
   def terminate(_reason, _state, _data), do: :void
   def code_change(_vsn, state, data, _extra), do: {:ok, state, data}
-  
+
 end

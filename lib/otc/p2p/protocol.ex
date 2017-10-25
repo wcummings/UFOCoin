@@ -27,9 +27,9 @@ defmodule OTC.P2P.Protocol do
   end
   
   def handle_info({:tcp_closed, socket}, state = %{socket: socket, transport: transport}) do
-    {:ok, {address, port}} = :inet.peername(socket)
-    address_string = :inet.ntoa(address)
-    Logger.info "Closing connection from #{address_string}:#{port}"
+    # {:ok, {address, port}} = :inet.peername(socket)
+    # address_string = :inet.ntoa(address)
+    # Logger.info "Closing connection from #{address_string}:#{port}"
     :ok = transport.close(socket)
     {:stop, :normal, state}
   end

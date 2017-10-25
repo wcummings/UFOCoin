@@ -32,6 +32,13 @@ services:
      - test
     ports:
       - "9009"
+  n6:
+    build: .
+    networks:
+     - test
+    ports:
+      - "9009"
+      
 
 networks:
   test:
