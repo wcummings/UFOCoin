@@ -9,7 +9,13 @@ alias OTC.P2P.AddrTable, as: P2PAddrTable
 defmodule OTC.P2P.ClientFSM do
   @behaviour :gen_statem
 
-  @initial_state %{client: nil, ip: nil, port: nil, retries: 0}
+  @initial_state %{
+    client: nil,
+    ip: nil,
+    port: nil,
+    retries: 0
+  }
+  
   @handshake_timeout_ms 10000
 
   def start_link(opts) do
@@ -31,12 +37,15 @@ defmodule OTC.P2P.ClientFSM do
     {:ok, :checkout_addr, @initial_state}
   end
 
+  def send_packet(pid, packet = %P2PPacket{}) do
+    GenServer.cast(pid, {:send_packet, packet})
+  end
+  
   def checkout_addr(:info, :checkout, data) do
     case P2PAddrServer.checkout do
       {:ok, %P2PAddr{ip: ip, port: port}} ->
 	Logger.info "Connecting... #{ip}:#{port}"
 	{:next_state, :connecting, %{data | ip: ip, port: port}, 0}
-      # Throttle retries when the node has not discovered enough peers yet
       {:error, :exhausted} ->
 	Logger.info "Not enough peers in database, waiting 10s before retrying..."
 	Process.send_after(self(), :checkout, 10 * 1000)
@@ -82,6 +91,10 @@ defmodule OTC.P2P.ClientFSM do
     Logger.info "Timeout waiting for handshake"
     {:stop, :normal}
   end
+
+  def waiting_for_handshake(:cast, {:send_packet, _}, _data) do
+    :keep_state_and_data
+  end
   
   def connected(:info, packet = %P2PPacket{proc: :addr, extra_data: addrs}, data) do
     # If theres only one addr, its prolly a node advertising and the node should broadcast it
@@ -96,11 +109,16 @@ defmodule OTC.P2P.ClientFSM do
     {:keep_state, data}
   end
 
-  def connected(:cast, {:broadcast, packet = %P2PPacket{}}, %{client: client}) do
+  def connected(:info, %P2PPacket{proc: :ping}, %{client: client}) do
+    P2PClient.pong(client)
+    :keep_state_and_data
+  end
+
+  def connected(:cast, {:send_packet, packet = %P2PPacket{}}, %{client: client}) do
     P2PClient.send_packet(client, packet)
     :keep_state_and_data
   end
-  
+
   def callback_mode, do: :state_functions
 
   def handle_event({:call, from}, _event, data), do: {:keep_state, data, [{:reply, from, {:error, :undef}}]}

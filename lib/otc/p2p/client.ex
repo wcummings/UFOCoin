@@ -34,8 +34,8 @@ defmodule OTC.P2P.Client do
     GenServer.cast(pid, %P2PPacket{proc: :version, extra_data: OTC.version})
   end
   
-  def ping(pid) do
-    GenServer.cast(pid, %P2PPacket{proc: :ping})
+  def pong(pid) do
+    GenServer.cast(pid, %P2PPacket{proc: :pong})
   end
 
   def getaddrs(pid) do
