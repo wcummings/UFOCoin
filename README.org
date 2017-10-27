@@ -1,4 +1,4 @@
-* (The) One True Chain
+* One True Chain
 
 Repo for me to experiment with Bitcoin and blockchain related concepts.
 
