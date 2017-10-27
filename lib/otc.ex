@@ -10,7 +10,7 @@ defmodule OTC do
   def start(_, _) do
     Logger.info "Starting the One True Chain"
 
-    mnesia_tables = [OTC.P2P.AddrTable]
+    mnesia_tables = [OTC.P2P.AddrTable, OTC.KeyTable]
     Enum.each(mnesia_tables, fn table -> table.init end)
 
     # Insert seed nodes
