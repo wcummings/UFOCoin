@@ -1,4 +1,4 @@
-* One True Chain
+* Minimum Viable Blockchain
 
 Repo for me to experiment with Bitcoin and blockchain related concepts.
 
