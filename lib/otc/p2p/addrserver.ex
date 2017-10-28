@@ -22,7 +22,7 @@ defmodule OTC.P2P.AddrServer do
   end
 
   def handle_call(:checkout, {from, _}, state = %{addrs_by_ref: addrs_by_ref, pids_by_ref: pids_by_ref}) do
-    addrs = OTC.P2P.AddrTable.get_addrs()
+    addrs = OTC.P2P.AddrTable.get_all()
     connected_addrs = Map.values(addrs_by_ref)
     |> Enum.map(fn (%OTC.P2P.Addr{ip: ip, port: port}) -> {ip, port} end)
 

@@ -8,7 +8,7 @@ defmodule OTC.Blockchain.Output do
 
   @spec serialize(t) :: binary()
   def serialize(%OTC.Blockchain.Output{amount: amount, destination: destination}) do
-    <<amount, destination>>
+    <<amount::32>> <> destination
   end
 
 end

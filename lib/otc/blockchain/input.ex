@@ -7,7 +7,8 @@ defmodule OTC.Blockchain.Input do
 
   @spec serialize(t) :: binary()
   def serialize(%OTC.Blockchain.Input{tx_hash: tx_hash, txout_index: txout_index, pubkey: pubkey, signature: signature}) do
-    <<tx_hash, txout_index, pubkey, signature>>
+    <<>> # FIXME
+    # <<tx_hash, txout_index, pubkey, signature>>
   end
   
 end

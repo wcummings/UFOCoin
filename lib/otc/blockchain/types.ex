@@ -1,6 +1,6 @@
 defmodule OTC.Blockchain.Types do
 
-  @type pubkey_hash :: String.t
-  @type block_hash :: String.t
+  @type pubkey_hash :: binary()
+  @type block_hash :: binary()
   
 end

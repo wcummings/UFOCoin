@@ -12,25 +12,25 @@ defmodule OTC.KeyTable do
     :ok
   end
 
-  def get_keypair_by_pubkeyhash(pubkeyhash) do
-    case :mnesia.transaction(fn -> :mnesia.read({Key, pubkeyhash}) end) do
-      {:atomic, [{Key, ^pubkeyhash, {pubkey, privkey}}]} ->
+  def get_keypair_by_pubkey_hash(pubkey_hash) do
+    case :mnesia.transaction(fn -> :mnesia.read({Key, pubkey_hash}) end) do
+      {:atomic, [{Key, ^pubkey_hash, {pubkey, privkey}}]} ->
 	{:ok, {pubkey, privkey}}
       {:atomic, []} ->
 	{:error, :nosuchkeypair}
     end
   end
 
-  def get_all_pubkeyhashes do
-    {:atomic, rows} = :mnesia.transaction(fn -> :mnesia.match_object({Key, '_', '_'}) end)
-    Enum.map(rows, fn {Key, pubkeyhash, _} -> pubkeyhash end)
+  def get_all_pubkey_hashes do
+    {:atomic, rows} = :mnesia.transaction(fn -> :mnesia.match_object({Key, :_, :_}) end)
+    Enum.map(rows, fn {Key, pubkey_hash, _} -> pubkey_hash end)
   end
 
   def generate_keypair do
     {pubkey, privkey} = :crypto.generate_key(:rsa, {@rsa_key_size, @rsa_public_exponent})
-    pubkeyhash = :crypto.hash(:sha256, pubkey)
-    :ok = insert(pubkeyhash, pubkey, privkey)
-    {pubkeyhash, pubkey, privkey}
+    pubkey_hash = :crypto.hash(:sha256, pubkey)
+    :ok = insert(pubkey_hash, pubkey, privkey)
+    {pubkey_hash, pubkey, privkey}
   end
   
 end

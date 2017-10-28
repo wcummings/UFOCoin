@@ -19,7 +19,7 @@ defmodule OTC do
     default_port = Application.get_env(:otc, :default_port)
 
     Enum.each(seed_nodes, fn ip ->
-      OTC.P2P.AddrTable.add_addr(%OTC.P2P.Addr{ip: ip, port: default_port})
+      OTC.P2P.AddrTable.insert(%OTC.P2P.Addr{ip: ip, port: default_port})
     end)
     
     if Application.get_env(:otc, :detect_ip) do
@@ -52,7 +52,7 @@ defmodule OTC do
     |> :inet.ntoa
     |> :erlang.list_to_binary
   end
-  
+
   def version do
     @version
   end

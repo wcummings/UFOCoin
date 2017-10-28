@@ -87,7 +87,7 @@ defmodule OTC.P2P.Protocol do
   end
 
   def handle_packet(%P2PPacket{proc: :getaddrs}, state = %{socket: socket, transport: transport, connected: true}) do
-    addrs = P2PAddrTable.get_addrs
+    addrs = P2PAddrTable.get_all
     response = %P2PPacket{proc: :addr, extra_data: addrs}
     payload = P2PPacket.encode(response)
     # Logger.info "Sending addrs: #{inspect(response)}"
@@ -99,7 +99,7 @@ defmodule OTC.P2P.Protocol do
     ip = Application.get_env(:otc, :ip)
     port = Application.get_env(:otc, :port)
     Enum.filter(addrs, fn addr -> {addr.ip, addr.port} != {ip, port} end) 
-    |> P2PAddrTable.add_addrs
+    |> P2PAddrTable.insert
     state
   end
 

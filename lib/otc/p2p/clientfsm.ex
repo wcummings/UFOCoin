@@ -100,12 +100,12 @@ defmodule OTC.P2P.ClientFSM do
     # If theres only one addr, its prolly a node advertising and the node should broadcast it
     if length(addrs) == 1 do
       [addr] = addrs
-      addr_with_last_seen = P2PAddrTable.get_addr(addr)
+      addr_with_last_seen = P2PAddrTable.get(addr)
       if (addr_with_last_seen.last_seen + 10 * 1000 < :os.system_time(:millisecond)) do
 	P2PAddrServer.broadcast(packet)
       end
     end
-    P2PAddrTable.add_addrs(addrs)
+    P2PAddrTable.insert(addrs)
     {:keep_state, data}
   end
 

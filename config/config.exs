@@ -35,8 +35,8 @@ config :otc,
   detect_ip: true,
   ip: "127.0.0.1",
   outbound_connections: 5,
-  # seed_nodes: [{"seed-node", 9009}]
-  seed_dns: 'test1.wpc.io'
+  seed_dns: 'test1.wpc.io',
+  key_dir: "/etc/otc/keys"
 
 config :logger, :console, metadata: [:module, :function, :line]
 
