@@ -1,6 +1,6 @@
 require Logger
 
-defmodule OTC.P2P.AddrServer do
+defmodule MBC.P2P.AddrServer do
   use GenServer
 
   @initial_state %{addrs_by_ref: %{}, pids_by_ref: %{}}
@@ -22,14 +22,14 @@ defmodule OTC.P2P.AddrServer do
   end
 
   def handle_call(:checkout, {from, _}, state = %{addrs_by_ref: addrs_by_ref, pids_by_ref: pids_by_ref}) do
-    addrs = OTC.P2P.AddrTable.get_all()
+    addrs = MBC.P2P.AddrTable.get_all()
     connected_addrs = Map.values(addrs_by_ref)
-    |> Enum.map(fn (%OTC.P2P.Addr{ip: ip, port: port}) -> {ip, port} end)
+    |> Enum.map(fn (%MBC.P2P.Addr{ip: ip, port: port}) -> {ip, port} end)
 
-    my_ip = Application.get_env(:otc, :ip)
-    my_port = Application.get_env(:otc, :port)
+    my_ip = Application.get_env(:mbc, :ip)
+    my_port = Application.get_env(:mbc, :port)
     
-    eligible_addrs = Enum.filter(addrs, fn (%OTC.P2P.Addr{ip: ip, port: port}) ->
+    eligible_addrs = Enum.filter(addrs, fn (%MBC.P2P.Addr{ip: ip, port: port}) ->
       not Enum.member?(connected_addrs, {ip, port}) and {ip, port} != {my_ip, my_port}
     end)
     
@@ -46,7 +46,7 @@ defmodule OTC.P2P.AddrServer do
   end
 
   def handle_cast({:broadcast, packet}, state = %{pids_by_ref: pids_by_ref}) do
-    for pid <- Map.values(pids_by_ref), do: OTC.P2P.ClientFSM.send_packet(pid, packet)
+    for pid <- Map.values(pids_by_ref), do: MBC.P2P.ClientFSM.send_packet(pid, packet)
     {:noreply, state}
   end
 

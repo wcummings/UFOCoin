@@ -1,6 +1,6 @@
-alias OTC.Blockchain.Block, as: Block
+alias MBC.Blockchain.Block, as: Block
 
-defmodule OTC.Blockchain.BlockTable do
+defmodule MBC.Blockchain.BlockTable do
 
   def init do
     :mnesia.create_table(Block, [:attributes, [:block_hash, :block]])

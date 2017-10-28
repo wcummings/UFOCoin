@@ -1,8 +1,8 @@
-defmodule OTC.Mixfile do
+defmodule MBC.Mixfile do
   use Mix.Project
 
   def project do
-    [app: :otc,
+    [app: :mbc,
      version: "0.1.0",
      # elixir: "~> 1.4",
      build_embedded: Mix.env == :prod,
@@ -13,7 +13,7 @@ defmodule OTC.Mixfile do
   def application do
     [
       extra_applications: [:logger, :mnesia],
-      mod: {OTC, []}
+      mod: {MBC, []}
     ]
   end
 

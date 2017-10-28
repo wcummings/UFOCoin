@@ -29,14 +29,13 @@ use Mix.Config
 #
 #     import_config "#{Mix.env}.exs"
 
-config :otc,
+config :mbc,
   default_port: 9009,
   port: 9009,
   detect_ip: true,
   ip: "127.0.0.1",
   outbound_connections: 5,
   seed_dns: 'test1.wpc.io',
-  key_dir: "/etc/otc/keys"
+  key_dir: "/etc/mbc/keys"
 
 config :logger, :console, metadata: [:module, :function, :line]
-

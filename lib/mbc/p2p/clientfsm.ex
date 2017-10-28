@@ -1,12 +1,12 @@
 require Logger
 
-alias OTC.P2P.Client, as: P2PClient
-alias OTC.P2P.AddrServer, as: P2PAddrServer
-alias OTC.P2P.Addr, as: P2PAddr
-alias OTC.P2P.Packet, as: P2PPacket
-alias OTC.P2P.AddrTable, as: P2PAddrTable
+alias MBC.P2P.Client, as: P2PClient
+alias MBC.P2P.AddrServer, as: P2PAddrServer
+alias MBC.P2P.Addr, as: P2PAddr
+alias MBC.P2P.Packet, as: P2PPacket
+alias MBC.P2P.AddrTable, as: P2PAddrTable
 
-defmodule OTC.P2P.ClientFSM do
+defmodule MBC.P2P.ClientFSM do
   @behaviour :gen_statem
 
   @initial_state %{
@@ -73,7 +73,7 @@ defmodule OTC.P2P.ClientFSM do
   end
 
   def waiting_for_handshake(:info, %P2PPacket{proc: :version, extra_data: version_string}, data) do
-    if OTC.version != version_string do
+    if MBC.version != version_string do
       {:stop, :normal}
     else
       {:keep_state, data}

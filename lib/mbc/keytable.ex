@@ -1,4 +1,4 @@
-defmodule OTC.KeyTable do
+defmodule MBC.KeyTable do
 
   @rsa_public_exponent 65537
   @rsa_key_size 256

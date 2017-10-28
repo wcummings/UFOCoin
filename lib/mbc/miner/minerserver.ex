@@ -1,8 +1,8 @@
-alias OTC.Blockchain.Block, as: Block
+alias MBC.Blockchain.Block, as: Block
 
 require Logger
 
-defmodule OTC.Miner.MinerServer do
+defmodule MBC.Miner.MinerServer do
   use GenServer
 
   def start_link(opts) do
@@ -14,7 +14,7 @@ defmodule OTC.Miner.MinerServer do
   end
 
   def mine(block) do
-    target = OTC.Util.difficulty_to_target(block.difficulty)
+    target = MBC.Util.difficulty_to_target(block.difficulty)
     mine(block, target)
   end
   

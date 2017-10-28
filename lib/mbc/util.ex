@@ -1,4 +1,4 @@
-defmodule OTC.Util do
+defmodule MBC.Util do
 
   def binary_join([]) do
     <<>>

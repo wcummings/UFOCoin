@@ -1,6 +1,6 @@
-alias OTC.Blockchain.TX, as: TX
+alias MBC.Blockchain.TX, as: TX
 
-defmodule OTC.Blockchain.MempoolTable do
+defmodule MBC.Blockchain.MempoolTable do
 
   def init() do
     :mnesia.create_table(Mempool, [attributes: [:tx_hash, :tx]])

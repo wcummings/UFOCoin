@@ -1,9 +1,9 @@
 require Logger
 
-alias OTC.P2P.Packet, as: P2PPacket
-alias OTC.P2P.Addr, as: P2PAddr
+alias MBC.P2P.Packet, as: P2PPacket
+alias MBC.P2P.Addr, as: P2PAddr
 
-defmodule OTC.P2P.Client do
+defmodule MBC.P2P.Client do
   use GenServer
 
   @initial_state %{
@@ -31,7 +31,7 @@ defmodule OTC.P2P.Client do
   end
   
   def version(pid) do
-    GenServer.cast(pid, %P2PPacket{proc: :version, extra_data: OTC.version})
+    GenServer.cast(pid, %P2PPacket{proc: :version, extra_data: MBC.version})
   end
   
   def pong(pid) do
@@ -43,8 +43,8 @@ defmodule OTC.P2P.Client do
   end
 
   def addr(pid) do
-    ip = Application.get_env(:otc, :ip)
-    port = Application.get_env(:otc, :port)
+    ip = Application.get_env(:mbc, :ip)
+    port = Application.get_env(:mbc, :port)
     GenServer.cast(pid, %P2PPacket{proc: :addr, extra_data: [%P2PAddr{ip: ip, port: port}]})
   end
   

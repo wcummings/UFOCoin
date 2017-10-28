@@ -44,8 +44,8 @@ end
 # when running `mix release`, the first release in the file
 # will be used by default
 
-release :otc do
-  set version: current_version(:otc)
-  set applications: [:otc]
+release :mbc do
+  set version: current_version(:mbc)
+  set applications: [:mbc]
 end
 

@@ -1,10 +1,10 @@
 require Logger
 
-alias OTC.P2P.Packet, as: P2PPacket
-alias OTC.P2P.AddrTable, as: P2PAddrTable
-alias OTC.P2P.PingFSM, as: P2PPingFSM
+alias MBC.P2P.Packet, as: P2PPacket
+alias MBC.P2P.AddrTable, as: P2PAddrTable
+alias MBC.P2P.PingFSM, as: P2PPingFSM
 
-defmodule OTC.P2P.Protocol do
+defmodule MBC.P2P.Protocol do
   use GenServer
 
   # TODO: use one value in protocol.ex and clientfsm.ex
@@ -66,10 +66,10 @@ defmodule OTC.P2P.Protocol do
   def handle_info(:timeout, state), do: {:noreply, state}
 
   def handle_packet(%P2PPacket{proc: :version, extra_data: version_string}, state = %{socket: socket, transport: transport}) do
-    request = %P2PPacket{proc: :version, extra_data: OTC.version}
+    request = %P2PPacket{proc: :version, extra_data: MBC.version}
     payload = P2PPacket.encode(request)
     :ok = transport.send(socket, payload)
-    if version_string == OTC.version do
+    if version_string == MBC.version do
       request = %P2PPacket{proc: :versionack}
       payload = P2PPacket.encode(request)
       transport.send(socket, payload)
@@ -96,8 +96,8 @@ defmodule OTC.P2P.Protocol do
   end
 
   def handle_packet(%P2PPacket{proc: :addr, extra_data: addrs}, state = %{connected: true}) do
-    ip = Application.get_env(:otc, :ip)
-    port = Application.get_env(:otc, :port)
+    ip = Application.get_env(:mbc, :ip)
+    port = Application.get_env(:mbc, :port)
     Enum.filter(addrs, fn addr -> {addr.ip, addr.port} != {ip, port} end) 
     |> P2PAddrTable.insert
     state

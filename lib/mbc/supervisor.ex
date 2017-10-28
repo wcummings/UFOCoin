@@ -1,4 +1,4 @@
-defmodule OTC.Supervisor do
+defmodule MBC.Supervisor do
   use Supervisor
 
   def start_link() do
@@ -7,8 +7,8 @@ defmodule OTC.Supervisor do
 
   def init([]) do
     children = [
-      {OTC.P2P.ClientFSMSupervisor, name: OTC.P2P.ClientFSMSupervisor},
-      {OTC.P2P.AddrServer, name: OTC.P2P.AddrServer}
+      {MBC.P2P.ClientFSMSupervisor, name: MBC.P2P.ClientFSMSupervisor},
+      {MBC.P2P.AddrServer, name: MBC.P2P.AddrServer}
     ]
 
     Supervisor.init(children, strategy: :one_for_one)

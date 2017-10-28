@@ -1,7 +1,7 @@
-alias OTC.P2P.Protocol, as: P2PProtocol
-alias OTC.P2P.Packet, as: P2PPacket
+alias MBC.P2P.Protocol, as: P2PProtocol
+alias MBC.P2P.Packet, as: P2PPacket
 
-defmodule OTC.P2P.PingFSM do
+defmodule MBC.P2P.PingFSM do
   @behaviour :gen_statem
 
   @ping_timeout 60000
