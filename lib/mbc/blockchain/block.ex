@@ -21,7 +21,7 @@ defmodule MBC.Blockchain.Block do
 
   def check_nonce(block) do
     block_hash = hash(block)
-    {:erlang.binary_to_integer(block_hash, 16) < MBC.Util.difficulty_to_target(block.difficulty), block_hash}
+    {:crypto.bytes_to_integer(block_hash) < MBC.Util.difficulty_to_target(block.difficulty), block_hash}
   end
   
 end
