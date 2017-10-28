@@ -1,4 +1,4 @@
-* Minimum Viable Blockchain
+* Minimal Blockchain
 
 Repo for me to experiment with Bitcoin and blockchain related concepts.
 
