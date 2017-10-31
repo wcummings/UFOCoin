@@ -20,5 +20,14 @@ defmodule MBC.Blockchain.MempoolTable do
     {:atomic, result} = :mnesia.clear_table(Mempool)
     result
   end
+
+  def get_all_and_clear do
+    {:atomic, result} = :mnesia.transaction(fn ->
+      result = :mnesia.match_object({Mempool, :_, :_})
+      :mnesia.clear_table(Mempool)
+      result
+    end)
+    result
+  end
   
 end

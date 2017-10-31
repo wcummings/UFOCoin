@@ -1,30 +1,42 @@
 require Logger
 
 defmodule MBC do
-  @moduledoc """
-  Documentation for MBC.
-  """
+  @genesis_block %MBC.Blockchain.Block{prev_block_hash: <<0::32>>, difficulty: 1}
 
   @version "alpha broadway tango"
+
+  def genesis_block do
+    @genesis_block
+  end
   
   def start(_, _) do
-    Logger.info "Starting the One True Chain"
+    Logger.info "Starting MBC"
 
-    mnesia_tables = [MBC.P2P.AddrTable, MBC.KeyTable]
+    Logger.info "Initializing mnesia tables..."
+    mnesia_tables = [
+      MBC.P2P.AddrTable,
+      MBC.KeyTable,
+      MBC.Blockchain.BlockTable,
+      MBC.Blockchain.MempoolTable
+    ]
     Enum.each(mnesia_tables, fn table -> table.init end)
 
+    # Insert genesis block
+    Logger.info "Inserting genesis block: #{inspect(@genesis_block)}"
+    MBC.Blockchain.BlockTable.insert(@genesis_block)
+    
     # Insert seed nodes
-    # seed_nodes = Application.get_env(:mbc, :seed_nodes)
     seed_nodes = lookup_seed_nodes()
     default_port = Application.get_env(:mbc, :default_port)
 
     Enum.each(seed_nodes, fn ip ->
       MBC.P2P.AddrTable.insert(%MBC.P2P.Addr{ip: ip, port: default_port})
     end)
-    
+
+    # TODO: ipv6
     if Application.get_env(:mbc, :detect_ip) do
       local_ip = get_local_ipv4_address()
-      Logger.info "detect_ip enabled, ip detected as #{inspect(local_ip)}"
+      Logger.info "detect_ip enabled, IP address detected as #{inspect(local_ip)}"
       Application.put_env(:mbc, :ip, local_ip)
     end
     
