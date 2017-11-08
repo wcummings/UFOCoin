@@ -24,21 +24,21 @@ defmodule MBC.Miner.MinerServer do
   end
   
   def mine(block) do
-    target = MBC.Util.difficulty_to_target(block.difficulty)
-    mine(block, target)
+    mine(block, MBC.Util.difficulty_to_target(block.difficulty))
   end
 
-  # PoC, slow as fuck
-  def mine(block, target) do
-    nonce = :crypto.strong_rand_bytes(4)
-    block_with_nonce = %{block | nonce: nonce}
-    case Block.check_nonce(block_with_nonce) do
+  def mine(block = %Block{}, target) do
+    mine(Block.encode(%{block | nonce: :crypto.strong_rand_bytes(4)}), target)
+  end
+
+  def mine(block, target) when is_binary(block) do
+    case Block.check_nonce(block) do
       {true, hash} ->
-	Logger.info "Successfully mined block, difficulty = #{block.difficulty}, nonce = #{:crypto.bytes_to_integer(nonce)}, block_hash = #{Base.encode16(hash)}"
-	block_with_nonce
+	Logger.info "Successfully mined block, difficulty = #{target}, block_hash = #{Base.encode16(hash)}"
+	block
       {false, hash} ->
 	# Logger.info "Invalid block_hash = #{Base.encode16(hash)}"
-	mine(block, target)
+	mine(Block.update_nonce(block, :crypto.strong_rand_bytes(4)), target)
     end
   end
 

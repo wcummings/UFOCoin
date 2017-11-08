@@ -60,8 +60,7 @@ defmodule MBC.P2P.Packet do
   end
 
   def encode(%MBC.P2P.Packet{proc: :addr, extra_data: addr_list}) do
-    encoded_addr_list = Enum.map(addr_list, &P2PAddr.encode/1)
-    [<<0x00, 0x03>>, encoded_addr_list]
+    [<<0x00, 0x03>>, Enum.map(addr_list, &P2PAddr.encode/1)]
   end
 
   def encode(%MBC.P2P.Packet{proc: :getaddrs}) do
