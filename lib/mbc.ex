@@ -1,7 +1,7 @@
 require Logger
 
 defmodule MBC do
-  @genesis_block %MBC.Blockchain.Block{prev_block_hash: <<0::32>>, difficulty: 1}
+  @genesis_block %MBC.Blockchain.Block{prev_block_hash: <<0::32>>, difficulty: 1, timestamp: :os.system_time(:millisecond)}
 
   @version "alpha broadway tango"
 
@@ -33,7 +33,6 @@ defmodule MBC do
       MBC.P2P.AddrTable.insert(%MBC.P2P.Addr{ip: ip, port: default_port})
     end)
 
-    # TODO: ipv6
     if Application.get_env(:mbc, :detect_ip) do
       local_ip = get_local_ipv4_address()
       Logger.info "detect_ip enabled, IP address detected as #{inspect(local_ip)}"
@@ -52,8 +51,7 @@ defmodule MBC do
   def lookup_seed_nodes do
     seed_dns = Application.get_env(:mbc, :seed_dns)
     {:ok, {:hostent, ^seed_dns, _, :inet, _, ips}} = :inet_res.getbyname(seed_dns, :a)
-    Enum.map(ips, &:inet.ntoa/1)
-    |> Enum.map(&:erlang.list_to_binary/1)
+    ips
   end
 
   def get_local_ipv4_address do
@@ -61,8 +59,6 @@ defmodule MBC do
     Enum.map(addrs, fn {_dev, opts} -> Keyword.get(opts, :addr) end)
     |> Enum.filter(fn addr -> addr != nil and Kernel.tuple_size(addr) == 4 and addr != {127, 0, 0, 1} end)
     |> hd
-    |> :inet.ntoa
-    |> :erlang.list_to_binary
   end
 
   def version do

@@ -44,7 +44,7 @@ defmodule MBC.P2P.ClientFSM do
   def checkout_addr(:info, :checkout, data) do
     case P2PAddrServer.checkout do
       {:ok, %P2PAddr{ip: ip, port: port}} ->
-	Logger.info "Connecting... #{ip}:#{port}"
+	Logger.info "Connecting... #{inspect(ip)}:#{port}"
 	{:next_state, :connecting, %{data | ip: ip, port: port}, 0}
       {:error, :exhausted} ->
 	Logger.info "Not enough peers in database, waiting 10s before retrying..."
@@ -74,6 +74,7 @@ defmodule MBC.P2P.ClientFSM do
 
   def waiting_for_handshake(:info, %P2PPacket{proc: :version, extra_data: version_string}, data) do
     if MBC.version != version_string do
+      Logger.info("Version mismatch #{MBC.version} != #{version_string}")
       {:stop, :normal}
     else
       {:keep_state, data}
@@ -83,7 +84,7 @@ defmodule MBC.P2P.ClientFSM do
   def waiting_for_handshake(:info, %P2PPacket{proc: :versionack}, data = %{client: client}) do
     P2PClient.getaddrs(client)
     P2PClient.addr(client)
-    Logger.info "Connected #{data.ip}:#{data.port}"
+    Logger.info "Connected #{inspect(data.ip)}:#{data.port}"
     {:next_state, :connected, data}
   end
 

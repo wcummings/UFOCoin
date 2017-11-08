@@ -16,7 +16,7 @@ defmodule MBC.P2P.Client do
   @socket_opts [:binary, packet: 4]
   
   def start_link(pid, ip, port) do
-    case :gen_tcp.connect(:erlang.binary_to_list(ip), port, @socket_opts) do
+    case :gen_tcp.connect(ip, port, @socket_opts) do
       {:ok, socket} ->
 	{:ok, client} = GenServer.start_link(__MODULE__, [pid, ip, port, socket], [])
 	:ok = :gen_tcp.controlling_process(socket, client)

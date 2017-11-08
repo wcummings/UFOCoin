@@ -9,7 +9,7 @@ defmodule MBC.P2P.AddrTable do
   end
 
   def insert(addr = %P2PAddr{ip: ip, port: port}) when is_map(addr) do
-    Logger.info "Writing addr to mnesia: #{ip}:#{port}"
+    Logger.info "Writing addr to mnesia: #{inspect(ip)}:#{port}"
     {:atomic, result} = :mnesia.transaction(fn -> :mnesia.write({Addr, {ip, port}, :os.system_time(:millisecond)}) end)
     result
   end
@@ -18,7 +18,7 @@ defmodule MBC.P2P.AddrTable do
   def insert(addrs) when is_list(addrs) do
     {:atomic, result} = :mnesia.transaction(fn ->
       Enum.each(addrs, fn (%P2PAddr{ip: ip, port: port}) ->
-	Logger.info "Writing addr to mnesia: #{ip}:#{port}"	
+	Logger.info "Writing addr to mnesia: #{inspect(ip)}:#{port}"	
 	:mnesia.write({Addr, {ip, port}, :os.system_time(:millisecond)})
       end)
     end)
