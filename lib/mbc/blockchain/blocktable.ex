@@ -7,11 +7,8 @@ defmodule MBC.Blockchain.BlockTable do
   end
 
   def insert(block) do
-    # f = fn ->
-    #   :mnesia.read({Block,
-
-    # 		    result
-    # 		    # {:atomic, result} = :mnesia.write({Block, Block.hash(block), block})
+    {:atomic, result} = :mnesia.write({Block, Block.hash(block), block.height, block})
+    result
   end
 
   def get(block_hash) do
@@ -19,6 +16,16 @@ defmodule MBC.Blockchain.BlockTable do
       {:atomic, []} -> :undefined
       {:atomic, [block]} -> block
     end
+  end
+
+  def get_longest do
+    :mnesia.transaction(fn ->
+      :qlc.eval(:qlc.sort(:qlc.q(for x <- :mnesia.table(Block), do: x), &sort_by_height/2))
+    end)
+  end
+
+  def sort_by_height(%Block{height: a}, %Block{height: b}) do
+    a > b
   end
   
 end

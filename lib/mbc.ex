@@ -1,7 +1,7 @@
 require Logger
 
 defmodule MBC do
-  @genesis_block %MBC.Blockchain.Block{prev_block_hash: <<0 :: size(32)>>, difficulty: 1, timestamp: :os.system_time(:millisecond)}
+  @genesis_block %MBC.Blockchain.Block{prev_block_hash: <<0 :: size(32)>>, difficulty: 1, height: 0, timestamp: :os.system_time(:millisecond)}
 
   @version "alpha broadway tango"
 

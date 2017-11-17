@@ -1,16 +1,15 @@
 require Logger
 
-alias MBC.Blockchain.Types, as: Types
 alias MBC.Blockchain.TX, as: TX
 
 defmodule MBC.Blockchain.Block do
-  @enforce_keys [:prev_block_hash, :timestamp, :difficulty]
-  defstruct prev_block_hash: nil, timestamp: nil, difficulty: nil, txs: [], nonce: 0
+  @enforce_keys [:prev_block_hash, :timestamp, :difficulty, :height]
+  defstruct prev_block_hash: nil, timestamp: nil, difficulty: nil, txs: [], height: nil, nonce: 0
 
   @type block_hash :: binary()
-  @type t :: %MBC.Blockchain.Block{prev_block_hash: block_hash, difficulty: non_neg_integer(), txs: list(TX.t)}
+  @type t :: %MBC.Blockchain.Block{prev_block_hash: block_hash, difficulty: non_neg_integer(), height: non_neg_integer(), txs: list(TX.t)}
 
-  def encode(block = %MBC.Blockchain.Block{prev_block_hash: prev_block_hash, difficulty: difficulty, txs: txs, nonce: nonce}) do
+  def encode(%MBC.Blockchain.Block{prev_block_hash: prev_block_hash, difficulty: difficulty, txs: txs, nonce: nonce}) do
     serialized_txs = Enum.map(txs, &TX.encode/1)
     prev_block_hash <> <<difficulty :: size(32)>> <> nonce <> <<length(serialized_txs) :: size(32)>> <> MBC.Util.binary_join(serialized_txs)
   end
@@ -25,7 +24,7 @@ defmodule MBC.Blockchain.Block do
   end
 
   def update_nonce(encoded_block, new_nonce) do
-    <<prev_block_hash :: size(32), difficulty :: size(32), nonce :: size(32), rest :: binary>> = encoded_block
+    <<prev_block_hash :: size(32), difficulty :: size(32), _nonce :: size(32), rest :: binary>> = encoded_block
     <<prev_block_hash :: size(32), difficulty :: size(32), new_nonce :: binary, rest :: binary>>
   end
 
