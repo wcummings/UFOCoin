@@ -1,6 +1,7 @@
 alias MBC.Blockchain.Block, as: Block
 alias MBC.Blockchain.MempoolTable, as: MempoolTable
-alias MBC.Mining.WorkerSupervisor, as: WorkerSupervisor
+alias MBC.Miner.WorkerSupervisor, as: WorkerSupervisor
+alias MBC.Miner.Worker, as: MinerWorker
 
 require Logger
 
@@ -23,7 +24,7 @@ defmodule MBC.Miner.MinerServer do
   end
 
   def handle_cast(:new_block, state = %{pids: pids, proc_count: proc_count}) do
-    for pid <- pids, do: MBC.Mining.Worker.stop(pid)
+    for pid <- pids, do: MinerWorker.stop(pid)
     new_block = nil
     new_pids = Enum.map(1 .. proc_count, fn ->
       {:ok, pid} = WorkerSupervisor.start_worker(new_block)

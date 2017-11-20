@@ -4,6 +4,8 @@ alias MBC.P2P.Addr, as: P2PAddr
 
 defmodule MBC.P2P.AddrTable do
 
+  # FIXME: Addr -> :p2paddr or P2PAddrTable or something like that
+  
   def init do
     :mnesia.create_table(Addr, [attributes: [:host, :last_seen]])
   end
@@ -14,7 +16,7 @@ defmodule MBC.P2P.AddrTable do
     result
   end
 
-  @spec insert(list(MBC.P2P.Addr.t)) :: :ok | {:error, term}
+  @spec insert(list(P2PAddr.t)) :: :ok | {:error, term}
   def insert(addrs) when is_list(addrs) do
     {:atomic, result} = :mnesia.transaction(fn ->
       Enum.each(addrs, fn (%P2PAddr{ip: ip, port: port}) ->

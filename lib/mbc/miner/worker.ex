@@ -34,6 +34,7 @@ defmodule MBC.Mining.Worker do
     case Block.check_nonce(block) do
       {true, hash} ->
 	Logger.info "Successfully mined block, difficulty = #{target}, block_hash = #{Base.encode16(hash)}"
+	# TODO: send to block validator? send to minerserver?
 	block
       {false, _} ->
 	receive do

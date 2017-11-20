@@ -8,6 +8,10 @@ defmodule MBC do
   def genesis_block do
     @genesis_block
   end
+
+  def version do
+    @version
+  end
   
   def start(_, _) do
     Logger.info "Starting MBC"
@@ -19,7 +23,18 @@ defmodule MBC do
       MBC.Blockchain.BlockTable,
       MBC.Blockchain.MempoolTable
     ]
-    Enum.each(mnesia_tables, fn table -> table.init end)
+    
+    Enum.each(mnesia_tables, fn table ->
+      case table.init do
+	{:aborted, {:already_exists, _}} ->
+	  :ok
+	{:aborted, error} ->
+	  Logger.error "Error setting up mnesia table: #{inspect(error)}"
+	  exit(error)
+	{:atomic, :ok} ->
+	  :ok
+      end
+    end)
 
     # Insert genesis block
     Logger.info "Inserting genesis block: #{inspect(@genesis_block)}"
@@ -61,8 +76,4 @@ defmodule MBC do
     |> hd
   end
 
-  def version do
-    @version
-  end
-  
 end

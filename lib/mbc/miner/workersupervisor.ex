@@ -1,7 +1,7 @@
-defmodule MBC.Mining.WorkerSupervisor do
+defmodule MBC.Miner.WorkerSupervisor do
   use Supervisor
 
-  @name MBC.Mining.WorkerSupervisor
+  @name MBC.Miner.WorkerSupervisor
 
   def start_link(opts) do
     Supervisor.start_link(__MODULE__, [], opts)

@@ -1,31 +1,36 @@
-alias MBC.Blockchain.Block, as: Block
-
 defmodule MBC.Blockchain.BlockTable do
 
+  @table_name :block_record
+  
   def init do
-    :mnesia.create_table(Block, [:attributes, [:block_hash, :height, :block, index: [:height]]])
+    :mnesia.create_table(@table_name, [attributes: [:height_and_hash, :hash, :block], type: :ordered_set, index: [:hash]])
   end
 
   def insert(block) do
-    {:atomic, result} = :mnesia.write({Block, Block.hash(block), block.height, block})
+    {:atomic, result} = :mnesia.transaction(fn ->
+      block_hash = MBC.Blockchain.Block.hash(block)
+      :mnesia.write({@table_name, {block.height, block_hash}, block_hash, block})
+    end)
     result
   end
 
   def get(block_hash) do
-    case :mnesia.transaction(fn -> :mnesia.read({Block, block_hash}) end) do
+    case :mnesia.transaction(fn -> :mnesia.index_read(@table_name, block_hash, 1) end) do
       {:atomic, []} -> :undefined
-      {:atomic, [block]} -> block
+      {:atomic, [block_record]} -> record_to_struct(block_record)
     end
   end
 
   def get_longest do
-    :mnesia.transaction(fn ->
-      :qlc.eval(:qlc.sort(:qlc.q(for x <- :mnesia.table(Block), do: x), &sort_by_height/2))
+    {:atomic, records} = :mnesia.transaction(fn ->
+      {block_height, _} = :mnesia.last(@table_name)
+      :mnesia.match_object(@table_name, {@table_name, {block_height, :_}, :_, :_}, :read)
     end)
+    Enum.map(records, &record_to_struct/1)
   end
 
-  def sort_by_height(%Block{height: a}, %Block{height: b}) do
-    a > b
+  def record_to_struct({@table_name, _, _, block}) do
+    block
   end
   
 end
