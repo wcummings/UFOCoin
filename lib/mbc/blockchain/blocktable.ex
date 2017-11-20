@@ -1,21 +1,23 @@
+alias MBC.Blockchain.Block, as: Block
+
 defmodule MBC.Blockchain.BlockTable do
 
   @table_name :block_record
   
   def init do
-    :mnesia.create_table(@table_name, [attributes: [:height_and_hash, :hash, :block], type: :ordered_set, index: [:hash]])
+    :mnesia.create_table(@table_name, [attributes: [:block_height_and_hash, :block_hash, :block], type: :ordered_set, index: [:block_hash]])
   end
 
   def insert(block) do
     {:atomic, result} = :mnesia.transaction(fn ->
-      block_hash = MBC.Blockchain.Block.hash(block)
+      block_hash = Block.hash(block)
       :mnesia.write({@table_name, {block.height, block_hash}, block_hash, block})
     end)
     result
   end
 
   def get(block_hash) do
-    case :mnesia.transaction(fn -> :mnesia.index_read(@table_name, block_hash, 1) end) do
+    case :mnesia.transaction(fn -> :mnesia.index_read(@table_name, block_hash, :block_hash) end) do
       {:atomic, []} -> :undefined
       {:atomic, [block_record]} -> record_to_struct(block_record)
     end

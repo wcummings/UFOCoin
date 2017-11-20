@@ -15,13 +15,17 @@ defmodule MBC.Blockchain.Block do
   end
 
   def hash(block = %MBC.Blockchain.Block{}) do
-    hash(encode(block))
+    encode(block) |> hash
   end
   
   def hash(block) do
     :crypto.hash(:sha256, block)
   end
 
+  def check_nonce(block = %MBC.Blockchain.Block{}) do
+    serialize(block) |> check_nonce
+  end
+  
   def check_nonce(block = <<_ :: size(32), difficulty :: size(32), _ :: binary>>) do
     block_hash = hash(block)
     {:crypto.bytes_to_integer(block_hash) < MBC.Util.difficulty_to_target(difficulty), block_hash}

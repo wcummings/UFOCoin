@@ -1,5 +1,5 @@
 alias MBC.Blockchain.Block, as: Block
-alias MBC.Blockchain.MempoolTable, as: MempoolTable
+alias MBC.Blockchain.BlockTable, as: BlockTable
 alias MBC.Miner.WorkerSupervisor, as: WorkerSupervisor
 alias MBC.Miner.Worker, as: MinerWorker
 
@@ -31,6 +31,10 @@ defmodule MBC.Miner.MinerServer do
       pid
     end)
     {:noreply, %{state | pids: new_pids}}
+  end
+
+  def build_new_block do
+    {:error, :undef} # TODO
   end
 
 end
