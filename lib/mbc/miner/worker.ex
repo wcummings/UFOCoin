@@ -5,18 +5,18 @@ alias MBC.Blockchain.LogServer, as: LogServer
 
 defmodule MBC.Miner.Worker do
 
-  def child_spec(opts) do
+  def child_spec(_opts) do
     %{
       id: __MODULE__,
       restart: :transient,
       shutdown: 5000,
-      start: {__MODULE__, :start_link, [opts]},
+      start: {__MODULE__, :start_link, []},
       type: :worker
     }
   end
   
   def start_link(block) do
-    spawn_link fn -> mine(block) end
+    {:ok, spawn_link fn -> mine(block) end}
   end
 
   def stop(pid) do
@@ -35,7 +35,7 @@ defmodule MBC.Miner.Worker do
     case Block.check_nonce(block) do
       {true, hash} ->
 	Logger.info "Successfully mined block, difficulty = #{target}, block_hash = #{Base.encode16(hash)}"
-	:ok = LogServer.accept_block(block)
+	:ok = LogServer.update(block)
       {false, _} ->
 	receive do
 	  :stop ->

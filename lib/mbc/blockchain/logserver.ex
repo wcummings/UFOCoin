@@ -1,6 +1,9 @@
+require Logger
+
 alias MBC.Blockchain.BlockHashIndex, as: BlockHashIndex
 alias MBC.Blockchain.Block, as: Block
 alias MBC.Blockchain.Log, as: BlockchainLog
+alias MBC.Miner.MinerServer, as: MinerServer
 
 defmodule MBC.Blockchain.LogServer do
   use GenServer
@@ -12,8 +15,8 @@ defmodule MBC.Blockchain.LogServer do
   end
 
   def init([]) do
-    log = BlockchainLog.init
-    spawn_link index_blocks(log, self())
+    {:ok, log} = BlockchainLog.init
+    spawn_link index_blocks(self())
     {:ok, %{@initial_state | log: log}}
   end
 
@@ -24,9 +27,13 @@ defmodule MBC.Blockchain.LogServer do
   def get_tip do
     GenServer.call(__MODULE__, :get_tip)
   end
+
+  def update(block = %Block{}) do
+    update(Block.encode(block))
+  end
   
-  def update(block, offset) do
-    GenServer.cast(__MODULE__, {:new_block, block, offset})
+  def update(block) do
+    GenServer.cast(__MODULE__, {:update, block})
   end
 
   def handle_call(_, state = %{index_complete: false}) do
@@ -48,13 +55,14 @@ defmodule MBC.Blockchain.LogServer do
     {:reply, {:ok, tip}, state}
   end
   
-  def handle_cast({:update, block}, state = %{tip: tip, log: log}) do
-    encoded_block = Block.encode(block)
-    block_hash = Block.hash(block)
+  def handle_cast({:update, encoded_block}, state = %{tip: tip, log: log}) do
+    block = Block.decode(encoded_block)
+    block_hash = Block.hash(encoded_block)
     offset = BlockchainLog.append_block(log, encoded_block)    
     :ok = BlockHashIndex.insert(block_hash, offset)
     new_tip = if block.height > tip.height do
-      block
+      MinerServer.new_block(block)
+      block      
     else
       tip
     end
@@ -62,11 +70,16 @@ defmodule MBC.Blockchain.LogServer do
   end
 
   def handle_info({:index_complete, tip}, state) do
+    Logger.info "Indexing complete, tip = #{inspect(tip)}"
+    MinerServer.new_block(tip)
     {:noreply, %{state | tip: tip, index_complete: true}}
   end
 
-  def index_blocks(log, pid) do
+  def index_blocks(pid) do
     fn ->
+      # Can't share file handles across processes
+      {:ok, log} = BlockchainLog.init
+      Logger.info "Indexing blocks..."
       tip = BlockchainLog.index_blocks(log)
       send pid, {:index_complete, tip}
     end

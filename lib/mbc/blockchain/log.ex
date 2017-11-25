@@ -1,3 +1,5 @@
+require Logger
+
 alias MBC.Blockchain.Block, as: Block
 alias MBC.Blockchain.BlockHashIndex, as: BlockHashIndex
 
@@ -33,12 +35,12 @@ defmodule MBC.Blockchain.Log do
   def read_block(%MBC.Blockchain.Log{file: file}, offset) do
     {:ok, ^offset} = :file.position(file, offset)
     # Read 4 byte length prefix
-    {:ok, bin_length} = :file.pread(file, offset, 4)
-    length = decode_length(bin_length)
-    case :file.pread(file, offset + 4, length) do
-      {:ok, encoded_block} ->
+    case :file.pread(file, offset, 4) do
+      {:ok, bin_length} ->
+	length = decode_length(bin_length)
+	{:ok, encoded_block} = :file.pread(file, offset + 4, length)
 	# Return offset to the next block w/ the retrieved block for indexing
-	{:ok, {encoded_block, offset + 4 + length}}
+	{:ok, {encoded_block, offset + 4 + length}}	    
       :eof ->
 	{:error, :eof}
     end
@@ -63,7 +65,7 @@ defmodule MBC.Blockchain.Log do
 
   @spec index_blocks(MBC.Blockchain.Log.t) :: non_neg_integer()
   def index_blocks(log) do
-    index_blocks(log, 0, nil)
+    index_blocks(log, 0, MBC.genesis_block)
   end
   
   def index_blocks(log, offset, tip) do
@@ -77,6 +79,7 @@ defmodule MBC.Blockchain.Log do
 	else
 	  tip
 	end
+	Logger.info "Indexing... next offset #{next_offset}"
 	index_blocks(log, next_offset, new_tip)
       {:error, :eof} ->
 	tip
