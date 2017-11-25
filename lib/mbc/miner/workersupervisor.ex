@@ -8,7 +8,7 @@ defmodule MBC.Miner.WorkerSupervisor do
   end
 
   def init([]) do
-    Supervisor.init([MBC.Mining.Worker], strategy: :simple_one_for_one)
+    Supervisor.init([MBC.Miner.Worker], strategy: :simple_one_for_one)
   end
 
   def start_worker(block) do

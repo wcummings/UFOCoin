@@ -6,8 +6,4 @@ defmodule MBC.Blockchain.TX do
 
   @type t :: %MBC.Blockchain.TX{version: non_neg_integer(), inputs: list(Input.t), outputs: list(Output.t)}
 
-  def encode(%MBC.Blockchain.TX{inputs: inputs, outputs: outputs}) do
-    <<>>
-  end
-
 end

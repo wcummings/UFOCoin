@@ -9,7 +9,7 @@ defmodule MBC.Blockchain.Log do
 
   @spec init() :: {:ok, MBC.Blockchain.Log.t} | {:error, :_}
   def init do
-    data_dir = Application.get_env(:mbc, data_dir)
+    data_dir = Application.get_env(:mbc, :data_dir)
     init(Path.join([data_dir, "blocks.dat"]))
   end
   
