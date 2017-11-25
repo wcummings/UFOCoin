@@ -37,6 +37,7 @@ config :mbc,
   outbound_connections: 5,
   seed_dns: 'test1.wpc.io',
   key_dir: "/etc/mbc/keys",
-  mining_proc_count: 1
+  mining_proc_count: 1,
+  data_dir: "/var/mbc/"
 
 config :logger, :console, metadata: [:module, :function, :line]

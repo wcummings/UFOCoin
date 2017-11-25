@@ -7,6 +7,12 @@ defmodule MBC.Blockchain.Log do
 
   @opaque t :: %MBC.Blockchain.Log{}
 
+  @spec init() :: {:ok, MBC.Blockchain.Log.t} | {:error, :_}
+  def init do
+    data_dir = Application.get_env(:mbc, data_dir)
+    init(Path.join([data_dir, "blocks.dat"]))
+  end
+  
   @spec init(String.t) :: {:ok, MBC.Blockchain.Log.t} | {:error, :_}
   def init(path) do
     case :file.open(path, [:read, :append, :binary, :raw]) do
@@ -38,11 +44,11 @@ defmodule MBC.Blockchain.Log do
     end
   end
 
-  @spec append_block(MBC.Blockchain.Log.t, binary()) :: :ok
+  @spec append_block(MBC.Blockchain.Log.t, binary()) :: non_neg_integer()
   def append_block(%MBC.Blockchain.Log{file: file}, encoded_block) do
     {:ok, offset} = :file.position(file, :eof)
     :ok = :file.write(file, encode_length(byte_size(encoded_block)) <> encoded_block)
-    {:ok, offset}
+    offset
   end
 
   @spec encode_length(non_neg_integer()) :: binary()
