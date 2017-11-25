@@ -2,9 +2,8 @@ require Logger
 
 defmodule MBC do
   @genesis_block %MBC.Blockchain.Block{prev_block_hash: <<0 :: size(32)>>, difficulty: 1, height: 0, timestamp: :os.system_time(:millisecond)}
-
   @version "alpha broadway tango"
-
+  
   def genesis_block do
     @genesis_block
   end
@@ -18,7 +17,8 @@ defmodule MBC do
 
     Logger.info "Initializing mnesia tables..."
     mnesia_tables = [
-      MBC.P2P.AddrTable
+      MBC.P2P.AddrTable,
+      MBC.Blockchain.BlockHashIndex
     ]
     
     Enum.each(mnesia_tables, fn table ->
@@ -33,10 +33,6 @@ defmodule MBC do
       end
     end)
 
-    # Insert genesis block
-    # Logger.info "Inserting genesis block: #{inspect(@genesis_block)}"
-    # MBC.Blockchain.BlockTable.insert(@genesis_block)
-    
     # Insert seed nodes
     seed_nodes = lookup_seed_nodes()
     default_port = Application.get_env(:mbc, :default_port)
@@ -72,5 +68,5 @@ defmodule MBC do
     |> Enum.filter(fn addr -> addr != nil and Kernel.tuple_size(addr) == 4 and addr != {127, 0, 0, 1} end)
     |> hd
   end
-
+    
 end

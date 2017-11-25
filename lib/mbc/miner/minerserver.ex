@@ -1,5 +1,4 @@
 alias MBC.Blockchain.Block, as: Block
-alias MBC.Blockchain.BlockTable, as: BlockTable
 alias MBC.Miner.WorkerSupervisor, as: WorkerSupervisor
 alias MBC.Miner.Worker, as: MinerWorker
 
@@ -14,8 +13,8 @@ defmodule MBC.Miner.MinerServer do
     GenServer.start_link(__MODULE__, [], opts)
   end
 
-  def new_block do
-    GenServer.cast(__MODULE__, :new_block)
+  def new_block(tip) do
+    GenServer.cast(__MODULE__, {:new_block, tip})
   end
   
   def init([]) do
@@ -23,18 +22,15 @@ defmodule MBC.Miner.MinerServer do
     {:ok, %{@initial_state | proc_count: proc_count}}
   end
 
-  def handle_cast(:new_block, state = %{pids: pids, proc_count: proc_count}) do
+  def handle_cast({:new_block, tip}, state = %{pids: pids, proc_count: proc_count}) do
     for pid <- pids, do: MinerWorker.stop(pid)
-    new_block = nil
+    new_block = Block.next_block(tip)
+    # TODO: get tx's for new block from mempool
     new_pids = Enum.map(1 .. proc_count, fn ->
       {:ok, pid} = WorkerSupervisor.start_worker(new_block)
       pid
     end)
     {:noreply, %{state | pids: new_pids}}
-  end
-
-  def build_new_block do
-    {:error, :undef} # TODO
   end
 
 end

@@ -1,5 +1,3 @@
-require Logger
-
 alias MBC.Blockchain.Block, as: Block
 alias MBC.Blockchain.Log, as: BlockchainLog
 

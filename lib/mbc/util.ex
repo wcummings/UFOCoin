@@ -31,5 +31,8 @@ defmodule MBC.Util do
     n = :erlang.node()
     :io_lib.format("/tmp/~p-~p.~p.~p", [n, a, b, c])
   end
+
+  def max(x, y) when x > y, do: x
+  def max(_, y), do: y
   
 end

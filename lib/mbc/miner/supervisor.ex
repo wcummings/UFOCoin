@@ -2,7 +2,7 @@ defmodule MBC.Miner.Supervisor do
   use Supervisor
 
   def start_link(opts) do
-    Supervisor.start_link(__MODULE__, [], [])
+    Supervisor.start_link(__MODULE__, [], opts)
   end
 
   def init([]) do

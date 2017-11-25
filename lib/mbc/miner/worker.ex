@@ -1,9 +1,9 @@
 require Logger
 
 alias MBC.Blockchain.Block, as: Block
-alias MBC.Blockchain.BlockServer, as: BlockServer
+alias MBC.Blockchain.LogServer, as: LogServer
 
-defmodule MBC.Mining.Worker do
+defmodule MBC.Miner.Worker do
 
   def child_spec(opts) do
     %{
@@ -35,7 +35,7 @@ defmodule MBC.Mining.Worker do
     case Block.check_nonce(block) do
       {true, hash} ->
 	Logger.info "Successfully mined block, difficulty = #{target}, block_hash = #{Base.encode16(hash)}"
-	:ok = BlockServer.accept_block(block)
+	:ok = LogServer.accept_block(block)
       {false, _} ->
 	receive do
 	  :stop ->

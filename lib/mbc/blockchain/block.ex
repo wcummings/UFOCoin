@@ -11,9 +11,13 @@ defmodule MBC.Blockchain.Block do
 
   def encode(%MBC.Blockchain.Block{prev_block_hash: prev_block_hash, difficulty: difficulty, height: height, txs: txs, nonce: nonce}) do
     serialized_txs = Enum.map(txs, &TX.encode/1)
-    prev_block_hash <> <<difficulty :: size(32)>> <> nonce <> <<length(serialized_txs) :: size(32)>> <> MBC.Util.binary_join(serialized_txs)
+    prev_block_hash <> <<difficulty :: size(32)>> <> <<height :: size(32)>> <> nonce <> <<length(serialized_txs) :: size(32)>> <> MBC.Util.binary_join(serialized_txs)
   end
 
+  def decode(_) do
+    # FIXME
+  end
+  
   def hash(block = %MBC.Blockchain.Block{}) do
     encode(block) |> hash
   end
@@ -36,8 +40,9 @@ defmodule MBC.Blockchain.Block do
     <<prev_block_hash :: size(32), difficulty :: size(32), new_nonce :: binary, rest :: binary>>
   end
 
-  # def from_block(%MBC.Blockchain.Block{block_hash: block_hash, height: prev_block_height}) do
-  #   %MBC.Blockchain.Block{prev_block_hash: block_hash, height: prev_block_height + 1}
-  # end
+  def next_block(block = %MBC.Blockchain.Block{height: prev_block_height}) do
+    block_hash = hash(block)
+    %MBC.Blockchain.Block{prev_block_hash: block_hash, height: prev_block_height + 1, difficulty: 20, timestamp: :os.system_time(:milliseconds)}
+  end
 
 end
