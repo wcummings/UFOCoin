@@ -9,7 +9,7 @@ defmodule MBC.Blockchain.Block do
   @type block_hash :: binary()
   @type t :: %MBC.Blockchain.Block{prev_block_hash: block_hash, difficulty: non_neg_integer(), height: non_neg_integer(), txs: list(TX.t)}
 
-  def encode(b = %MBC.Blockchain.Block{prev_block_hash: prev_block_hash, difficulty: difficulty, height: height, txs: txs, nonce: nonce}) do
+  def encode(%MBC.Blockchain.Block{prev_block_hash: prev_block_hash, difficulty: difficulty, height: height, txs: txs, nonce: nonce}) do
     serialized_txs = Enum.map(txs, &TX.encode/1)
     prev_block_hash <> <<difficulty :: size(32)>> <> nonce <> <<length(serialized_txs) :: size(32)>> <> MBC.Util.binary_join(serialized_txs)
   end
@@ -23,7 +23,7 @@ defmodule MBC.Blockchain.Block do
   end
 
   def check_nonce(block = %MBC.Blockchain.Block{}) do
-    serialize(block) |> check_nonce
+    encode(block) |> check_nonce
   end
   
   def check_nonce(block = <<_ :: size(32), difficulty :: size(32), _ :: binary>>) do

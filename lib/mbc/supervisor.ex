@@ -10,7 +10,6 @@ defmodule MBC.Supervisor do
       {MBC.P2P.ClientFSMSupervisor, name: MBC.P2P.ClientFSMSupervisor},
       {MBC.P2P.AddrServer, name: MBC.P2P.AddrServer},
       {MBC.Miner.Supervisor, name: MBC.Miner.Supervisor}
-      {MBC.Blockchain.BlockServer, name: MBC.Blockchain.BlockServer}
     ]
 
     Supervisor.init(children, strategy: :one_for_one)

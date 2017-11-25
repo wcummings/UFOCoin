@@ -25,5 +25,11 @@ defmodule MBC.Util do
   def long_to_ip(l) do
     long_to_ip(<<l :: size(32)>>)
   end
+
+  def temp_file do
+    {a, b, c} = :erlang.now()
+    n = :erlang.node()
+    :io_lib.format("/tmp/~p-~p.~p.~p", [n, a, b, c])
+  end
   
 end

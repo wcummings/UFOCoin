@@ -18,10 +18,7 @@ defmodule MBC do
 
     Logger.info "Initializing mnesia tables..."
     mnesia_tables = [
-      MBC.P2P.AddrTable,
-      MBC.KeyTable,
-      MBC.Blockchain.BlockTable,
-      MBC.Blockchain.MempoolTable
+      MBC.P2P.AddrTable
     ]
     
     Enum.each(mnesia_tables, fn table ->
@@ -37,8 +34,8 @@ defmodule MBC do
     end)
 
     # Insert genesis block
-    Logger.info "Inserting genesis block: #{inspect(@genesis_block)}"
-    MBC.Blockchain.BlockTable.insert(@genesis_block)
+    # Logger.info "Inserting genesis block: #{inspect(@genesis_block)}"
+    # MBC.Blockchain.BlockTable.insert(@genesis_block)
     
     # Insert seed nodes
     seed_nodes = lookup_seed_nodes()
