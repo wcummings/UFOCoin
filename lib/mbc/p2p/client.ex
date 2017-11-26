@@ -13,7 +13,7 @@ defmodule MBC.P2P.Client do
     pid: nil
   }
 
-  @socket_opts [:binary, packet: 4]
+  @socket_opts [:binary, packet: 4, active: :once]
   
   def start_link(pid, ip, port) do
     case :gen_tcp.connect(ip, port, @socket_opts) do
@@ -49,7 +49,7 @@ defmodule MBC.P2P.Client do
   end
   
   def init([pid, ip, port, socket]) do
-    :inet.setopts(socket, [{:active, true}|@socket_opts])
+    :ok = :inet.setopts(socket, @socket_opts)
     {:ok, %{@initial_state | socket: socket, ip: ip, port: port, pid: pid}}
   end
 
@@ -63,6 +63,7 @@ defmodule MBC.P2P.Client do
   def handle_info({:tcp, socket, data}, state = %{socket: socket}) do
     response = P2PPacket.decode(data)
     send state.pid, response
+    :ok = :inet.setopts(socket, @socket_opts)
     {:noreply, state}
   end
 

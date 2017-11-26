@@ -1,8 +1,11 @@
 require Logger
 
+alias MBC.Blockchain.LogServer, as: LogServer
+alias MBC.Blockchain.Block, as: Block
 alias MBC.P2P.Packet, as: P2PPacket
 alias MBC.P2P.AddrTable, as: P2PAddrTable
 alias MBC.P2P.PingFSM, as: P2PPingFSM
+alias MBC.P2P.AddrServer, as: P2PAddrServer
 
 defmodule MBC.P2P.Protocol do
   use GenServer
@@ -33,7 +36,7 @@ defmodule MBC.P2P.Protocol do
 
   def init(ref, socket, transport) do
     :ok = :ranch.accept_ack(ref)
-    :ok = transport.setopts(socket, [{:active, true}, {:packet, 4}, :binary])
+    :ok = transport.setopts(socket, [{:active, :once}, {:packet, 4}, :binary])
     :gen_server.enter_loop(__MODULE__, [], %{@initial_state | socket: socket, transport: transport}, @handshake_timeout_ms)
   end
 
@@ -43,10 +46,11 @@ defmodule MBC.P2P.Protocol do
     {:noreply, state}
   end
     
-  def handle_info({:tcp, _socket, data}, state) do
+  def handle_info({:tcp, _socket, data}, state = %{socket: socket, transport: transport}) do
     request = P2PPacket.decode(data)
     Logger.info "Received command #{inspect(request)}"
     state = handle_packet(request, state)
+    :ok = transport.setopts(socket, [{:active, :once}, {:packet, 4}, :binary])    
     {:noreply, state}
   end
   
@@ -103,9 +107,26 @@ defmodule MBC.P2P.Protocol do
     state
   end
 
+  def handle_packet(packet = %P2PPacket{proc: :block, extra_data: block}, state = %{connected: true}) do
+    case LogServer.get_block_by_hash(Block.hash(block)) do
+      {:error, :notfound} ->
+	state
+      {:ok, _block} -> 
+	case Block.validate_block(block) do
+	  :ok ->
+	    # Broadcast block if we haven't seen it before
+	    P2PAddrServer.broadcast(packet)
+	    LogServer.update(block)
+	  {:error, error} ->
+	    Logger.warn "Block rejected, reason: #{inspect(error)}, block: #{inspect(block)}"
+	end
+	state
+    end
+  end
+
   def handle_packet(request, state) do
     Logger.warn "Invalid request: #{inspect(request)}"
     state
   end
-  
+
 end
