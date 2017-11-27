@@ -19,9 +19,11 @@ defmodule MBC.P2P.AddrTable do
   @spec insert(list(P2PAddr.t)) :: :ok | {:error, term}
   def insert(addrs) when is_list(addrs) do
     {:atomic, result} = :mnesia.transaction(fn ->
-      Enum.each(addrs, fn (%P2PAddr{ip: ip, port: port}) ->
-	Logger.info "Writing addr to mnesia: #{inspect(ip)}:#{port}"	
-	:mnesia.write({Addr, {ip, port}, :os.system_time(:millisecond)})
+      Enum.each(addrs, fn (addr = %P2PAddr{ip: ip, port: port}) ->
+	if get(addr) == {:error, :notfound} do
+	  Logger.info "Writing addr to mnesia: #{inspect(ip)}:#{port}"	
+	end
+	:mnesia.write({Addr, {ip, port}, :os.system_time(:millisecond)})	
       end)
     end)
     result
@@ -35,8 +37,12 @@ defmodule MBC.P2P.AddrTable do
   end
 
   def get(%P2PAddr{ip: ip, port: port}) do
-    {:atomic, [{Addr, {^ip, ^port}, last_seen}]} = :mnesia.transaction(fn -> :mnesia.read(Addr, {ip, port}) end)
-    %P2PAddr{ip: ip, port: port, last_seen: last_seen}
+    case :mnesia.transaction(fn -> :mnesia.read(Addr, {ip, port}) end) do
+      {:atomic, [{Addr, {^ip, ^port}, last_seen}]} ->
+	{:ok, %P2PAddr{ip: ip, port: port, last_seen: last_seen}}
+      {:atomic, []} ->
+	{:error, :notfound}
+    end
   end
   
 end

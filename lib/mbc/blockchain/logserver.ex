@@ -36,22 +36,15 @@ defmodule MBC.Blockchain.LogServer do
     GenServer.cast(__MODULE__, {:update, block})
   end
 
-  def handle_call(_, state = %{index_complete: false}) do
+  def handle_call(_, _, state = %{index_complete: false}) do
     {:reply, {:error, :index_incomplete}, state}
   end
   
-  def handle_call({:get_block_by_hash, block_hash}, state = %{log: log}) do
-    case BlockHashIndex.get_offset(block_hash) do
-      :undefined ->
-	{:reply, {:error, :notfound}, state}
-      offset ->
-	{encoded_block, _} = BlockchainLog.read_block(log, offset)
-	block = Block.decode(encoded_block)
-	{:reply, {:ok, block}, state}
-    end
+  def handle_call({:get_block_by_hash, block_hash}, _from, state = %{log: log}) do
+    {:reply, get_block_by_hash(log, block_hash), state}
   end
   
-  def handle_call(:get_tip, state = %{tip: tip}) do
+  def handle_call(:get_tip, _from, state = %{tip: tip}) do
     {:reply, {:ok, tip}, state}
   end
   
@@ -82,6 +75,17 @@ defmodule MBC.Blockchain.LogServer do
       Logger.info "Indexing blocks..."
       tip = BlockchainLog.index_blocks(log)
       send pid, {:index_complete, tip}
+    end
+  end
+
+  def get_block_by_hash(log, block_hash) do
+    case BlockHashIndex.get_offset(block_hash) do
+      :undefined ->
+	{:error, :notfound}
+      offset ->
+	{encoded_block, _} = BlockchainLog.read_block(log, offset)
+	block = Block.decode(encoded_block)
+	{:ok, block}
     end
   end
   

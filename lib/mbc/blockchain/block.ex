@@ -1,6 +1,7 @@
 require Logger
 
 alias MBC.Blockchain.TX, as: TX
+alias MBC.Blockchain.LogServer, as: LogServer
 
 defmodule MBC.Blockchain.Block do
   @enforce_keys [:prev_block_hash, :timestamp, :difficulty, :height]
@@ -42,7 +43,32 @@ defmodule MBC.Blockchain.Block do
 
   def next_block(block = %MBC.Blockchain.Block{height: prev_block_height}) do
     block_hash = hash(block)
-    %MBC.Blockchain.Block{prev_block_hash: block_hash, height: prev_block_height + 1, difficulty: 20, timestamp: :os.system_time(:millisecond)}
+    %MBC.Blockchain.Block{prev_block_hash: block_hash, height: prev_block_height + 1, difficulty: 7, timestamp: :os.system_time(:millisecond)}
   end
 
+  def validate_block(new_block) do
+    if check_nonce(new_block) do
+      check_prev_block(new_block)
+    else
+      {:error, :badnonce}
+    end
+  end
+
+  def check_prev_block(block = %MBC.Blockchain.Block{prev_block_hash: prev_block_hash}) do
+    case LogServer.get_block_by_hash(prev_block_hash) do
+      {:error, :notfound} ->
+	{:error, :orphan}
+      {:ok, prev_block} ->
+	check_prev_block(block, prev_block)
+    end
+  end
+
+  def check_prev_block(%MBC.Blockchain.Block{height: height}, %MBC.Blockchain.Block{height: prev_height}) do
+    if (height - 1) == prev_height do
+      :ok
+    else
+      {:error, :badheight}
+    end
+  end
+  
 end

@@ -4,7 +4,7 @@ alias MBC.P2P.Packet, as: P2PPacket
 defmodule MBC.P2P.PingFSM do
   @behaviour :gen_statem
 
-  @ping_timeout 60000
+  @ping_timeout 60 * 60 * 1000
   
   def start_link(pid) do
     :gen_statem.start_link(__MODULE__, [pid], [])

@@ -13,10 +13,6 @@ defmodule MBC.P2P.AddrServer do
     GenServer.call(__MODULE__, :checkout)
   end
 
-  def broadcast(packet) do
-    GenServer.cast(__MODULE__, {:broadcast, packet})
-  end
-  
   def init([]) do
     {:ok, @initial_state}
   end
@@ -43,11 +39,6 @@ defmodule MBC.P2P.AddrServer do
     else
       {:reply, {:error, :exhausted}, state}
     end
-  end
-
-  def handle_cast({:broadcast, packet}, state = %{pids_by_ref: pids_by_ref}) do
-    for pid <- Map.values(pids_by_ref), do: MBC.P2P.ClientFSM.send_packet(pid, packet)
-    {:noreply, state}
   end
 
   def handle_info({:DOWN, ref, _, _, _}, state = %{addrs_by_ref: addrs_by_ref, pids_by_ref: pids_by_ref}) do

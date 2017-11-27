@@ -1,23 +1,26 @@
 require Logger
 
-alias MBC.P2P.Client, as: P2PClient
 alias MBC.P2P.AddrServer, as: P2PAddrServer
 alias MBC.P2P.Addr, as: P2PAddr
 alias MBC.P2P.Packet, as: P2PPacket
 alias MBC.P2P.AddrTable, as: P2PAddrTable
+alias MBC.P2P.ConnectionSupervisor, as: P2PConnectionSupervisor
 
 defmodule MBC.P2P.ClientFSM do
   @behaviour :gen_statem
 
   @initial_state %{
-    client: nil,
+    socket: nil,
     ip: nil,
     port: nil,
-    retries: 0
+    retries: 0,
+    connection: nil
   }
   
   @handshake_timeout_ms 10000
 
+  @socket_opts [:binary, packet: 4, active: :once]
+  
   def start_link(opts) do
     :gen_statem.start_link(__MODULE__, [], opts)
   end
@@ -37,11 +40,7 @@ defmodule MBC.P2P.ClientFSM do
     {:ok, :checkout_addr, @initial_state}
   end
 
-  def send_packet(pid, packet = %P2PPacket{}) do
-    GenServer.cast(pid, {:send_packet, packet})
-  end
-  
-  def checkout_addr(:info, :checkout, data) do
+  def handle_event(:info, :checkout, :checkout_addr, data) do
     case P2PAddrServer.checkout do
       {:ok, %P2PAddr{ip: ip, port: port}} ->
 	Logger.info "Connecting... #{inspect(ip)}:#{port}"
@@ -53,10 +52,10 @@ defmodule MBC.P2P.ClientFSM do
     end
   end
 
-  def connecting(:timeout, _, data = %{ip: ip, port: port}) do
-    case P2PClient.start_link(self(), ip, port) do
-      {:ok, client} ->
-	{:next_state, :starting_handshake, %{data | ip: ip, port: port, client: client}, 0}
+  def handle_event(:timeout, _, :connecting, data = %{ip: ip, port: port}) do
+    case :gen_tcp.connect(ip, port, @socket_opts) do
+      {:ok, socket} ->
+	{:next_state, :starting_handshake, %{data | ip: ip, port: port, socket: socket}, 0}
       {:error, error} ->
 	Logger.info "Connection error: #{inspect(error)}"
 	if data.retries > 3 do # TODO: make this configurable
@@ -67,12 +66,12 @@ defmodule MBC.P2P.ClientFSM do
     end
   end
   
-  def starting_handshake(:timeout, _, data = %{client: client}) do
-    P2PClient.version(client)
+  def handle_event(:timeout, _, :starting_handshake, data = %{socket: socket}) do  
+    send_packet(socket, %P2PPacket{proc: :version, extra_data: MBC.version})
     {:next_state, :waiting_for_handshake, data, @handshake_timeout_ms}
   end
 
-  def waiting_for_handshake(:info, %P2PPacket{proc: :version, extra_data: version_string}, data) do
+  def handle_event(:info, %P2PPacket{proc: :version, extra_data: version_string}, :waiting_for_handshake, data) do
     if MBC.version != version_string do
       Logger.info("Version mismatch #{MBC.version} != #{version_string}")
       {:stop, :normal}
@@ -81,49 +80,38 @@ defmodule MBC.P2P.ClientFSM do
     end
   end
 
-  def waiting_for_handshake(:info, %P2PPacket{proc: :versionack}, data = %{client: client}) do
-    P2PClient.getaddrs(client)
-    P2PClient.addr(client)
+  def handle_event(:info, %P2PPacket{proc: :versionack}, :waiting_for_handshake, data = %{socket: socket}) do
+    send_packet(socket, %P2PPacket{proc: :getaddrs})
+    {ip, port} = {Application.get_env(:mbc, :ip), Application.get_env(:mbc, :port)}
+    send_packet(socket, %P2PPacket{proc: :addr, extra_data: [%P2PAddr{ip: ip, port: port}]})
+    {:ok, pid} = P2PConnectionSupervisor.new_connection(socket)
+    :true = Process.link(pid)
+    :ok = :gen_tcp.controlling_process(socket, pid)
     Logger.info "Connected #{inspect(data.ip)}:#{data.port}"
-    {:next_state, :connected, data}
+    {:next_state, :connected, %{data | connection: pid}}
   end
-
-  def waiting_for_handshake(:timeout, _, _data) do
+  
+  def handle_event(:timeout, _, :waiting_for_handshake, _data) do
     Logger.info "Timeout waiting for handshake"
     {:stop, :normal}
   end
 
-  def waiting_for_handshake(:cast, {:send_packet, _}, _data) do
-    :keep_state_and_data
-  end
-  
-  def connected(:info, packet = %P2PPacket{proc: :addr, extra_data: addrs}, data) do
-    # If theres only one addr, its prolly a node advertising and the node should broadcast it
-    if length(addrs) == 1 do
-      [addr] = addrs
-      addr_with_last_seen = P2PAddrTable.get(addr)
-      if (addr_with_last_seen.last_seen + 10 * 1000 < :os.system_time(:millisecond)) do
-	P2PAddrServer.broadcast(packet)
-      end
-    end
-    P2PAddrTable.insert(addrs)
-    {:keep_state, data}
-  end
-
-  def connected(:info, %P2PPacket{proc: :ping}, %{client: client}) do
-    P2PClient.pong(client)
+  def handle_event(:info, {:tcp, _socket, tcpdata}, _, data = %{socket: socket}) do
+    packet = P2PPacket.decode(tcpdata)
+    Logger.info "Received packet #{inspect(packet)}"
+    send self(), packet
+    :ok = :inet.setopts(socket, @socket_opts)
     :keep_state_and_data
   end
 
-  def connected(:cast, {:send_packet, packet = %P2PPacket{}}, %{client: client}) do
-    P2PClient.send_packet(client, packet)
-    :keep_state_and_data
+  def send_packet(socket, packet) do
+    :ok = :gen_tcp.send(socket, P2PPacket.encode(packet))
   end
 
-  def callback_mode, do: :state_functions
+  def callback_mode, do: :handle_event_function
 
+  def handle_event(_event, _content, data), do: {:keep_state, data}
   def handle_event({:call, from}, _event, data), do: {:keep_state, data, [{:reply, from, {:error, :undef}}]}
-  def handle_event(_event, data), do: {:keep_state, data}
   def terminate(_reason, _state, _data), do: :void
   def code_change(_vsn, state, data, _extra), do: {:ok, state, data}
 

@@ -2,6 +2,8 @@ require Logger
 
 alias MBC.Blockchain.Block, as: Block
 alias MBC.Blockchain.LogServer, as: LogServer
+alias MBC.P2P.Connection, as: P2PConnection
+alias MBC.P2P.Packet, as: P2PPacket
 
 defmodule MBC.Miner.Worker do
 
@@ -36,11 +38,12 @@ defmodule MBC.Miner.Worker do
       {true, hash} ->
 	Logger.info "Successfully mined block, difficulty = #{target}, block_hash = #{Base.encode16(hash)}"
 	:ok = LogServer.update(block)
+	P2PConnection.broadcast(%P2PPacket{proc: :block, extra_data: Block.decode(block)})	
       {false, _} ->
 	receive do
 	  :stop ->
 	    exit(:normal)
-	after 0 ->
+	after 1000 ->
 	    mine(Block.update_nonce(block, :crypto.strong_rand_bytes(4)), target)
 	end
     end

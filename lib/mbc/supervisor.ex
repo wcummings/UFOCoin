@@ -10,7 +10,9 @@ defmodule MBC.Supervisor do
       {MBC.P2P.ClientFSMSupervisor, name: MBC.P2P.ClientFSMSupervisor},
       {MBC.P2P.AddrServer, name: MBC.P2P.AddrServer},
       {MBC.Miner.Supervisor, name: MBC.Miner.Supervisor},
-      {MBC.Blockchain.LogServer, name: MBC.Blockchain.LogServer}
+      {MBC.Blockchain.LogServer, name: MBC.Blockchain.LogServer},
+      {MBC.P2P.ConnectionSupervisor, name: MBC.P2P.ConnectionSupervisor},
+      {Registry, [keys: :duplicate, name: :connection_registry]}
     ]
 
     Supervisor.init(children, strategy: :one_for_one)
