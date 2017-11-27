@@ -16,6 +16,10 @@ defmodule MBC.Blockchain.LogServer do
 
   def init([]) do
     {:ok, log} = BlockchainLog.init
+    if BlockchainLog.is_empty?(log) do
+      Logger.info "Inserting genesis block..."
+      BlockchainLog.append_block(log, Block.encode(MBC.genesis_block))
+    end
     spawn_link index_blocks(self())
     {:ok, %{@initial_state | log: log}}
   end
@@ -80,10 +84,10 @@ defmodule MBC.Blockchain.LogServer do
 
   def get_block_by_hash(log, block_hash) do
     case BlockHashIndex.get_offset(block_hash) do
-      :undefined ->
+      {:error, :notfound} ->
 	{:error, :notfound}
-      offset ->
-	{encoded_block, _} = BlockchainLog.read_block(log, offset)
+      {:ok, offset} ->
+	{:ok, {encoded_block, _}} = BlockchainLog.read_block(log, offset)
 	block = Block.decode(encoded_block)
 	{:ok, block}
     end

@@ -43,7 +43,7 @@ defmodule MBC.Miner.Worker do
 	receive do
 	  :stop ->
 	    exit(:normal)
-	after 1000 ->
+	after 1500 ->
 	    mine(Block.update_nonce(block, :crypto.strong_rand_bytes(4)), target)
 	end
     end

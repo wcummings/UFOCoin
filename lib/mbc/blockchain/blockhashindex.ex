@@ -13,9 +13,9 @@ defmodule MBC.Blockchain.BlockHashIndex do
     {:atomic, result} = :mnesia.transaction(fn -> :mnesia.read(BlockHashIndexTable, block_hash) end)
     case result do
       [{BlockHashIndexTable, ^block_hash, offset}] ->
-	offset
+	{:ok, offset}
       [] ->
-	:undefined
+	{:error, :notfound}
     end
   end
 

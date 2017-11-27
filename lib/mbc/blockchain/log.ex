@@ -31,7 +31,7 @@ defmodule MBC.Blockchain.Log do
     offset == 0
   end
   
-  @spec read_block(MBC.Blockchain.Log.t, non_neg_integer()) :: {binary(), non_neg_integer()}
+  @spec read_block(MBC.Blockchain.Log.t, non_neg_integer()) :: {:ok, {binary(), non_neg_integer()}} | {:error, :eof}
   def read_block(%MBC.Blockchain.Log{file: file}, offset) do
     {:ok, ^offset} = :file.position(file, offset)
     # Read 4 byte length prefix
@@ -63,7 +63,7 @@ defmodule MBC.Blockchain.Log do
     :binary.decode_unsigned(length)
   end
 
-  @spec index_blocks(MBC.Blockchain.Log.t) :: non_neg_integer()
+  @spec index_blocks(MBC.Blockchain.Log.t) :: Block.t
   def index_blocks(log) do
     index_blocks(log, 0, MBC.genesis_block)
   end
@@ -72,14 +72,14 @@ defmodule MBC.Blockchain.Log do
     case read_block(log, offset) do
       {:ok, {encoded_block, next_offset}} ->
 	block_hash = Block.hash(encoded_block)
-	:ok = BlockHashIndex.insert(block_hash, encoded_block)
+	Logger.info "Indexing... block_hash #{inspect(block_hash)}"
+	:ok = BlockHashIndex.insert(block_hash, offset)
 	block = Block.decode(encoded_block)
 	new_tip = if block.height > tip.height do
 	  block
 	else
 	  tip
 	end
-	Logger.info "Indexing... next offset #{next_offset}"
 	index_blocks(log, next_offset, new_tip)
       {:error, :eof} ->
 	tip

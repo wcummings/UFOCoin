@@ -76,6 +76,7 @@ defmodule MBC.P2P.Connection do
     
     Enum.filter(addrs, fn addr -> {addr.ip, addr.port} != {ip, port} end)
     |> P2PAddrTable.insert
+
     state
   end
 
