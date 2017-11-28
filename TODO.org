@@ -5,7 +5,8 @@
 * DONE Supervisor for pingfsm
   CLOSED: [2017-11-28 Tue 15:56]
 * TODO Difficulty adjustment
-* TODO Exclude recipient from broadcast
+* DONE Exclude recipient from broadcast
+  CLOSED: [2017-11-28 Tue 17:09]
 * TODO Inventory sync
 * DONE Get rid of ranch as a dep
   CLOSED: [2017-11-28 Tue 15:56]
