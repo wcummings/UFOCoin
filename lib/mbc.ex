@@ -47,13 +47,13 @@ defmodule MBC do
       Application.put_env(:mbc, :ip, local_ip)
     end
     
-    {:ok, _} = MBC.Supervisor.start_link
+    {:ok, pid} = MBC.Supervisor.start_link
     outbound_connections = Application.get_env(:mbc, :outbound_connections)
     for _ <- 1 .. outbound_connections, do: {:ok, _} = MBC.P2P.ClientFSMSupervisor.start_client
-
-    port = Application.get_env(:mbc, :port)
-    Logger.info "Listening on #{port}"
-    :ranch.start_listener(make_ref(), :ranch_tcp, [{:port, port}], MBC.P2P.Protocol, [])
+    {:ok, pid}
+    # port = Application.get_env(:mbc, :port)
+    # Logger.info "Listening on #{port}"
+    # :ranch.start_listener(make_ref(), :ranch_tcp, [{:port, port}], MBC.P2P.Protocol, [])
   end
 
   def lookup_seed_nodes do

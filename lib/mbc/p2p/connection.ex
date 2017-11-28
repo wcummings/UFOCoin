@@ -56,7 +56,7 @@ defmodule MBC.P2P.Connection do
 
   def handle_info({:tcp_closed, socket}, state = %{socket: socket}) do
     :gen_tcp.close(socket)
-    {:stop, :normal, state}
+    {:stop, :disconnected, state}
   end
 
   def handle_packet(%P2PPacket{proc: :getaddrs}, state = %{socket: socket}) do

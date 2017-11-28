@@ -28,7 +28,7 @@ defmodule MBC.Miner.MinerServer do
     Logger.info "Mining new block #{inspect(new_block)}"    
     # TODO: get tx's for new block from mempool
     new_pids = Enum.map(1 .. proc_count, fn _ ->
-      {:ok, pid} = WorkerSupervisor.start_worker(new_block)
+      {:ok, pid} = WorkerSupervisor.start_child(new_block)
       pid
     end)
     {:noreply, %{state | pids: new_pids}}

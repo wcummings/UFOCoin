@@ -12,14 +12,13 @@ defmodule MBC.Mixfile do
 
   def application do
     [
-      extra_applications: [:logger, :mnesia],
+      extra_applications: [:logger, :mnesia, :crypto],
       mod: {MBC, []}
     ]
   end
 
   defp deps do
-    [{:ranch, "~> 1.4.0"},
-     {:dialyxir, "~> 0.5", only: [:dev], runtime: false},
+    [{:dialyxir, "~> 0.5", only: [:dev], runtime: false},
      {:distillery, "~> 1.5", runtime: false}]
   end
 end
