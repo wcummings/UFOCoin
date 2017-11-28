@@ -7,9 +7,10 @@ defmodule MBC.Supervisor do
 
   def init([]) do
     children = [
-      {MBC.Blockchain.LogServer, name: MBC.Blockchain.LogServer},
-      {MBC.P2P.Supervisor, name: MBC.P2P.Supervisor},
-      {MBC.Miner.Supervisor, name: MBC.Miner.Supervisor}
+      worker(MBC.Blockchain.LogServer, []),
+      supervisor(MBC.P2P.Supervisor, []),
+      supervisor(MBC.Miner.Supervisor, []),
+      worker(MBC.Blockchain.BlockValidatorServer, [])
     ]
 
     Supervisor.init(children, strategy: :one_for_one)

@@ -10,8 +10,8 @@ defmodule MBC.Blockchain.LogServer do
 
   @initial_state %{tip: nil, index_complete: false, log: nil}
   
-  def start_link(opts) do
-    GenServer.start_link(__MODULE__, [], opts)
+  def start_link do
+    GenServer.start_link(__MODULE__, [], name: __MODULE__)
   end
 
   def init([]) do
@@ -92,5 +92,5 @@ defmodule MBC.Blockchain.LogServer do
 	{:ok, block}
     end
   end
-
+  
 end

@@ -46,7 +46,7 @@ defmodule MBC.Blockchain.Block do
     %MBC.Blockchain.Block{prev_block_hash: block_hash, height: prev_block_height + 1, difficulty: 8, timestamp: :os.system_time(:millisecond)}
   end
 
-  def validate_block(new_block) do
+  def validate(new_block) do
     if check_nonce(new_block) do
       check_prev_block(new_block)
     else

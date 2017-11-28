@@ -2,6 +2,7 @@ require Logger
 
 alias MBC.Blockchain.LogServer, as: LogServer
 alias MBC.Blockchain.Block, as: Block
+alias MBC.Blockchain.BlockValidatorServer, as: BlockValidatorServer
 alias MBC.P2P.Packet, as: P2PPacket
 alias MBC.P2P.AddrTable, as: P2PAddrTable
 alias MBC.P2P.PingFSM, as: P2PPingFSM
@@ -88,21 +89,18 @@ defmodule MBC.P2P.Connection do
   end
 
   def handle_packet(packet = %P2PPacket{proc: :block, extra_data: block}, state) do
-    case LogServer.get_block_by_hash(Block.hash(block)) do
-      {:ok, _block} ->
-	state
-      {:error, :notfound} -> 
-	case Block.validate_block(block) do
-	  :ok ->
-	    Logger.info "Block accepted: #{inspect(block)}"
-	    # Broadcast block if we haven't seen it before
-	    LogServer.update(block)
-	    broadcast(packet)
-	  {:error, error} ->
-	    Logger.warn "Block rejected, reason: #{inspect(error)}, block: #{inspect(block)}"
-	end
-	state
+    case BlockValidatorServer.validate_block(block) do
+      :ok ->
+	Logger.info "Block accepted: #{inspect(block)}"
+	# Broadcast block if we haven't seen it before
+	LogServer.update(block)
+	broadcast(packet)
+      {:error, :alreadyaccepted} ->
+	:ok # Ignore it
+      {:error, error} ->
+	Logger.warn "Block rejected, reason: #{inspect(error)}, block: #{inspect(block)}"
     end
+    state
   end
 
   def handle_packet(%P2PPacket{proc: :ping}, state = %{socket: socket}) do
@@ -121,8 +119,13 @@ defmodule MBC.P2P.Connection do
   end
 
   def broadcast(packet) do
+    broadcast(packet, [])
+  end
+  
+  def broadcast(packet, excluded_pids) do
     Registry.dispatch(:connection_registry, "connection", fn entries ->
-      for {pid, _} <- entries, do: send_packet(pid, packet)
+      Enum.filter(entries, fn {pid, _} -> not :lists.member(pid, excluded_pids) end)
+      |> Enum.each(fn {pid, _} -> send_packet(pid, packet) end)
     end)
   end
   
