@@ -23,7 +23,11 @@ defmodule MBC.Blockchain.BlockValidatorServer do
       {:ok, _block} ->
 	{:reply, {:error, :alreadyaccepted}, state}
       {:error, :notfound} ->
-	{:reply, Block.validate(block), state}
+	result = Block.validate(block)
+	if result == :ok do
+	  LogServer.update(block)
+	end
+	{:reply, result, state}
     end
   end
   
