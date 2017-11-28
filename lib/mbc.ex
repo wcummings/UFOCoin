@@ -43,7 +43,7 @@ defmodule MBC do
 
     if Application.get_env(:mbc, :detect_ip) do
       local_ip = get_local_ipv4_address()
-      Logger.info "detect_ip enabled, IP address detected as #{inspect(local_ip)}"
+      Logger.info "IP address detected as #{inspect(local_ip)}"
       Application.put_env(:mbc, :ip, local_ip)
     end
     
@@ -51,9 +51,6 @@ defmodule MBC do
     outbound_connections = Application.get_env(:mbc, :outbound_connections)
     for _ <- 1 .. outbound_connections, do: {:ok, _} = MBC.P2P.ClientFSMSupervisor.start_client
     {:ok, pid}
-    # port = Application.get_env(:mbc, :port)
-    # Logger.info "Listening on #{port}"
-    # :ranch.start_listener(make_ref(), :ranch_tcp, [{:port, port}], MBC.P2P.Protocol, [])
   end
 
   def lookup_seed_nodes do

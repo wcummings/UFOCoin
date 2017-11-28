@@ -43,7 +43,7 @@ defmodule MBC.Blockchain.Block do
 
   def next_block(block = %MBC.Blockchain.Block{height: prev_block_height}) do
     block_hash = hash(block)
-    %MBC.Blockchain.Block{prev_block_hash: block_hash, height: prev_block_height + 1, difficulty: 7, timestamp: :os.system_time(:millisecond)}
+    %MBC.Blockchain.Block{prev_block_hash: block_hash, height: prev_block_height + 1, difficulty: 8, timestamp: :os.system_time(:millisecond)}
   end
 
   def validate_block(new_block) do

@@ -94,6 +94,7 @@ defmodule MBC.P2P.Connection do
       {:error, :notfound} -> 
 	case Block.validate_block(block) do
 	  :ok ->
+	    Logger.info "Block accepted: #{inspect(block)}"
 	    # Broadcast block if we haven't seen it before
 	    LogServer.update(block)
 	    broadcast(packet)

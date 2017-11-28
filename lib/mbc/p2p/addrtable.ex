@@ -10,10 +10,8 @@ defmodule MBC.P2P.AddrTable do
     :mnesia.create_table(Addr, [attributes: [:host, :last_seen]])
   end
 
-  def insert(addr = %P2PAddr{ip: ip, port: port}) when is_map(addr) do
-    Logger.info "Writing addr to mnesia: #{inspect(ip)}:#{port}"
-    {:atomic, result} = :mnesia.transaction(fn -> :mnesia.write({Addr, {ip, port}, :os.system_time(:millisecond)}) end)
-    result
+  def insert(addr) when is_map(addr) do
+    insert([addr])
   end
 
   @spec insert(list(P2PAddr.t)) :: :ok | {:error, term}
@@ -21,7 +19,7 @@ defmodule MBC.P2P.AddrTable do
     {:atomic, result} = :mnesia.transaction(fn ->
       Enum.each(addrs, fn (addr = %P2PAddr{ip: ip, port: port}) ->
 	if get(addr) == {:error, :notfound} do
-	  Logger.info "Writing addr to mnesia: #{inspect(ip)}:#{port}"	
+	  Logger.debug "New peer discovered: #{inspect(ip)}:#{port}"	
 	end
 	:mnesia.write({Addr, {ip, port}, :os.system_time(:millisecond)})	
       end)

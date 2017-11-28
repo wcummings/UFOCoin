@@ -1,9 +1,13 @@
-* TODO Fix protocol/clientfsm naming
-* TODO Re-enable pingfsm
-* TODO Supervisor for pingfsm
+* DONE Fix protocol/clientfsm naming
+  CLOSED: [2017-11-28 Tue 15:56]
+* DONE Re-enable pingfsm
+  CLOSED: [2017-11-28 Tue 15:56]
+* DONE Supervisor for pingfsm
+  CLOSED: [2017-11-28 Tue 15:56]
 * TODO Difficulty adjustment
 * TODO Exclude recipient from broadcast
 * TODO Inventory sync
-* TODO Get rid of ranch as a dep
+* DONE Get rid of ranch as a dep
+  CLOSED: [2017-11-28 Tue 15:56]
 * TODO Orphan handler
 * TODO Un-used map in AddrServer

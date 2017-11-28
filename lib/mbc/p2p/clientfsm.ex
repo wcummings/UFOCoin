@@ -42,7 +42,6 @@ defmodule MBC.P2P.ClientFSM do
   def handle_event(:info, :checkout, :checkout_addr, data) do
     case P2PAddrServer.checkout do
       {:ok, %P2PAddr{ip: ip, port: port}} ->
-	Logger.info "Connecting... #{inspect(ip)}:#{port}"
 	{:next_state, :connecting, %{data | ip: ip, port: port}, 0}
       {:error, :exhausted} ->
 	Logger.info "Not enough peers in database, waiting 10s before retrying..."
@@ -86,18 +85,16 @@ defmodule MBC.P2P.ClientFSM do
     {:ok, pid} = P2PConnectionSupervisor.new_connection(socket)
     :true = Process.link(pid)
     :ok = :gen_tcp.controlling_process(socket, pid)
-    Logger.info "Connected #{inspect(data.ip)}:#{data.port}"
     {:next_state, :connected, %{data | connection: pid}}
   end
   
   def handle_event(:timeout, _, :waiting_for_handshake, _data) do
-    Logger.info "Timeout waiting for handshake"
+    Logger.info "Handshake timeout"
     {:stop, :normal}
   end
 
   def handle_event(:info, {:tcp, _socket, tcpdata}, _, %{socket: socket}) do
     packet = P2PPacket.decode(tcpdata)
-    Logger.info "Received packet #{inspect(packet)}"
     send self(), packet
     :ok = :inet.setopts(socket, @socket_opts)
     :keep_state_and_data

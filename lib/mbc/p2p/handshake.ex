@@ -26,16 +26,15 @@ defmodule MBC.P2P.Handshake do
   end
 
   def init([socket]) do
-    # {:ok, {address, port}} = :inet.peername(socket)
-    # address_string = :inet.ntoa(address)
-    # Logger.info "New connection from #{address_string}:#{port}"
+    {:ok, {address, port}} = :inet.peername(socket)
+    address_string = :inet.ntoa(address)
+    Logger.info "New connection from #{address_string}:#{port}"
     :ok = :inet.setopts(socket, @socket_opts)
     {:ok, %{@initial_state | socket: socket}, @handshake_timeout_ms}
   end
 
   def handle_info({:tcp, _socket, data}, state = %{socket: socket}) do
     request = P2PPacket.decode(data)
-    # Logger.info "Received packet #{inspect(request)}"
     state = handle_packet(request, state)
     :ok = :inet.setopts(socket, [active: :once])
     {:noreply, state}
