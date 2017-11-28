@@ -1,0 +1,9 @@
+* TODO Fix protocol/clientfsm naming
+* TODO Re-enable pingfsm
+* TODO Supervisor for pingfsm
+* TODO Difficulty adjustment
+* TODO Exclude recipient from broadcast
+* TODO Inventory sync
+* TODO Get rid of ranch as a dep
+* TODO Orphan handler
+* TODO Un-used map in AddrServer
