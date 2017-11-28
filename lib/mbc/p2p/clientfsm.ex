@@ -3,7 +3,6 @@ require Logger
 alias MBC.P2P.AddrServer, as: P2PAddrServer
 alias MBC.P2P.Addr, as: P2PAddr
 alias MBC.P2P.Packet, as: P2PPacket
-alias MBC.P2P.AddrTable, as: P2PAddrTable
 alias MBC.P2P.ConnectionSupervisor, as: P2PConnectionSupervisor
 
 defmodule MBC.P2P.ClientFSM do
@@ -96,7 +95,7 @@ defmodule MBC.P2P.ClientFSM do
     {:stop, :normal}
   end
 
-  def handle_event(:info, {:tcp, _socket, tcpdata}, _, data = %{socket: socket}) do
+  def handle_event(:info, {:tcp, _socket, tcpdata}, _, %{socket: socket}) do
     packet = P2PPacket.decode(tcpdata)
     Logger.info "Received packet #{inspect(packet)}"
     send self(), packet
@@ -110,8 +109,8 @@ defmodule MBC.P2P.ClientFSM do
 
   def callback_mode, do: :handle_event_function
 
-  def handle_event(_event, _content, data), do: {:keep_state, data}
   def handle_event({:call, from}, _event, data), do: {:keep_state, data, [{:reply, from, {:error, :undef}}]}
+  def handle_event(_event, _content, data), do: {:keep_state, data}  
   def terminate(_reason, _state, _data), do: :void
   def code_change(_vsn, state, data, _extra), do: {:ok, state, data}
 

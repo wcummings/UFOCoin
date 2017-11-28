@@ -1,10 +1,20 @@
-alias MBC.P2P.Protocol, as: P2PProtocol
+alias MBC.P2P.Connection, as: P2PConnection
 alias MBC.P2P.Packet, as: P2PPacket
 
 defmodule MBC.P2P.PingFSM do
   @behaviour :gen_statem
 
   @ping_timeout 60 * 60 * 1000
+
+  def child_spec(_opts) do
+    %{
+      id: __MODULE__,
+      restart: :temporary,
+      shutdown: 5000,
+      start: {__MODULE__, :start_link, []},
+      type: :worker
+    }
+  end
   
   def start_link(pid) do
     :gen_statem.start_link(__MODULE__, [pid], [])
@@ -23,7 +33,7 @@ defmodule MBC.P2P.PingFSM do
   end
 
   def sending(:timeout, _, data = %{pid: pid}) do
-    :ok = P2PProtocol.send_packet(pid, %P2PPacket{proc: :ping})
+    :ok = P2PConnection.send_packet(pid, %P2PPacket{proc: :ping})
     {:next_state, :waiting, data, @ping_timeout}
   end
 

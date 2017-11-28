@@ -1,10 +1,6 @@
 require Logger
 
-alias MBC.Blockchain.LogServer, as: LogServer
-alias MBC.Blockchain.Block, as: Block
 alias MBC.P2P.Packet, as: P2PPacket
-alias MBC.P2P.AddrTable, as: P2PAddrTable
-alias MBC.P2P.AddrServer, as: P2PAddrServer
 alias MBC.P2P.ConnectionSupervisor, as: P2PConnectionSupervisor
 
 defmodule MBC.P2P.Protocol do

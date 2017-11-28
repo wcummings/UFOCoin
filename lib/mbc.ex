@@ -2,7 +2,7 @@ require Logger
 
 defmodule MBC do
   @genesis_block %MBC.Blockchain.Block{prev_block_hash: <<0 :: size(256)>>, difficulty: 1, height: 0, timestamp: 0}
-  @version "alpha broadway tango"
+  @version "ALPHA"
   
   def genesis_block do
     @genesis_block

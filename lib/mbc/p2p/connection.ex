@@ -5,16 +5,17 @@ alias MBC.Blockchain.Block, as: Block
 alias MBC.P2P.Packet, as: P2PPacket
 alias MBC.P2P.AddrTable, as: P2PAddrTable
 alias MBC.P2P.PingFSM, as: P2PPingFSM
+alias MBC.P2P.PingFSMSupervisor, as: P2PPingFSMSupervisor
 
 defmodule MBC.P2P.Connection do
   use GenServer
 
-  @initial_state %{socket: nil}
+  @initial_state %{socket: nil, pingfsm: nil}
 
   def child_spec(_opts) do
     %{
       id: __MODULE__,
-      restart: :transient,
+      restart: :temporary,
       shutdown: 5000,
       start: {__MODULE__, :start_link, []},
       type: :worker
@@ -29,10 +30,16 @@ defmodule MBC.P2P.Connection do
     GenServer.cast(pid, {:send_packet, packet})
   end
 
+  def send_packet(socket, packet = %P2PPacket{}) do
+    :ok = :gen_tcp.send(socket, P2PPacket.encode(packet))
+  end
+  
   def init([socket]) do
     :ok = :inet.setopts(socket, [{:active, :once}]) # Re-set {:active, :once}    
     {:ok, _} = Registry.register(:connection_registry, "connection", [])
-    {:ok, %{@initial_state | socket: socket}}
+    {:ok, pid} = P2PPingFSMSupervisor.start_child(self())
+    :true = Process.link(pid)
+    {:ok, %{@initial_state | socket: socket, pingfsm: pid}}
   end
 
   def handle_cast({:send_packet, packet}, state = %{socket: socket}) do
@@ -97,20 +104,21 @@ defmodule MBC.P2P.Connection do
     end
   end
 
-  def handle_packet(%P2PPacket{proc: :pong}, state) do
-    # P2PPingFSM.pong(pingfsm)
+  def handle_packet(%P2PPacket{proc: :ping}, state = %{socket: socket}) do
+    send_packet(socket, %P2PPacket{proc: :ping})
+    state
+  end
+  
+  def handle_packet(%P2PPacket{proc: :pong}, state = %{pingfsm: pingfsm}) do
+    P2PPingFSM.pong(pingfsm)
     state
   end
   
   def handle_packet(packet, state) do
-    Logger.warn "Malformed packet: #{packet}"
+    Logger.warn "Malformed packet: #{inspect(packet)}"
     state
   end
 
-  def send_packet(socket, packet = %P2PPacket{}) do
-    :ok = :gen_tcp.send(socket, P2PPacket.encode(packet))
-  end
-  
   def broadcast(packet) do
     Registry.dispatch(:connection_registry, "connection", fn entries ->
       for {pid, _} <- entries, do: send_packet(pid, packet)

@@ -92,5 +92,5 @@ defmodule MBC.Blockchain.LogServer do
 	{:ok, block}
     end
   end
-  
+
 end
