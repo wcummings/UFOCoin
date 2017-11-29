@@ -1,7 +1,10 @@
 require Logger
 
+alias MBC.Blockchain.Block, as: Block
+alias MBC.Blockchain.BlockHeader, as: BlockHeader
+
 defmodule MBC do
-  @genesis_block %MBC.Blockchain.Block{prev_block_hash: <<0 :: size(256)>>, difficulty: 1, height: 0, timestamp: 0}
+  @genesis_block %Block{header: %BlockHeader{prev_block_hash: <<0 :: size(256)>>, difficulty: 1, height: 0, timestamp: 0}, txs: []}
   @version "ALPHA"
   
   def genesis_block do

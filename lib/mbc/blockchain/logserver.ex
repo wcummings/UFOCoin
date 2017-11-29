@@ -70,7 +70,7 @@ defmodule MBC.Blockchain.LogServer do
     block_hash = Block.hash(encoded_block)
     offset = BlockchainLog.append_block(log, encoded_block)    
     :ok = BlockHashIndex.insert(block_hash, offset)
-    new_tip = if block.height > tip.height do
+    new_tip = if block.header.height > tip.header.height do
       MinerServer.new_block(block)
       block      
     else

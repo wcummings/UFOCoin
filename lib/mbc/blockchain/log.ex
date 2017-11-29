@@ -72,10 +72,10 @@ defmodule MBC.Blockchain.Log do
     case read_block(log, offset) do
       {:ok, {encoded_block, next_offset}} ->
 	block_hash = Block.hash(encoded_block)
-	Logger.info "Indexing... #{inspect(block_hash)}"
+	Logger.info "Indexing... #{Base.encode16(block_hash)}"
 	:ok = BlockHashIndex.insert(block_hash, offset)
 	block = Block.decode(encoded_block)
-	new_tip = if block.height > tip.height do
+	new_tip = if block.header.height > tip.header.height do
 	  block
 	else
 	  tip

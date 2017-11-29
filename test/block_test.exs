@@ -11,10 +11,4 @@ defmodule BlockTest do
     assert block == decoded_block
   end
 
-  test "Update nonce nop" do
-    block = Block.encode(MBC.genesis_block)
-    block2 = Block.update_nonce(block, <<0, 0, 0, 0>>)
-    assert block == block2
-  end
-  
 end
