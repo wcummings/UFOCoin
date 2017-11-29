@@ -1,10 +1,8 @@
 defmodule MBC.P2P.HandshakeSupervisor do
   use Supervisor
 
-  @name MBC.P2P.HandshakeSupervisor
-
-  def start_link(opts) do
-    Supervisor.start_link(__MODULE__, [], opts)
+  def start_link do
+    Supervisor.start_link(__MODULE__, [], name: __MODULE__)
   end
 
   def init([]) do
@@ -12,7 +10,7 @@ defmodule MBC.P2P.HandshakeSupervisor do
   end
 
   def start_child(socket) do
-    Supervisor.start_child(@name, [socket])
+    Supervisor.start_child(__MODULE__, [socket])
   end
   
 end

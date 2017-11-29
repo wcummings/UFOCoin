@@ -1,7 +1,5 @@
 require Logger
 
-alias MBC.Blockchain.LogServer, as: LogServer
-alias MBC.Blockchain.Block, as: Block
 alias MBC.Blockchain.BlockValidatorServer, as: BlockValidatorServer
 alias MBC.P2P.Packet, as: P2PPacket
 alias MBC.P2P.AddrTable, as: P2PAddrTable

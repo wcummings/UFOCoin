@@ -40,6 +40,19 @@ defmodule MBC.Blockchain.LogServer do
     GenServer.cast(__MODULE__, {:update, block})
   end
 
+  def get_prev_blocks(number_of_blocks, tip) do
+    get_prev_blocks(number_of_blocks, tip, [])
+  end
+
+  def get_prev_blocks(number_of_blocks, tip, blocks) do
+    {:ok, block} = get_block_by_hash(tip.prev_block_hash)
+    if (block.height == 0) or (tip.height - block.height == number_of_blocks) do
+      blocks
+    else
+      get_prev_blocks(number_of_blocks, tip, [block|blocks])
+    end
+  end
+  
   def handle_call(_, _, state = %{index_complete: false}) do
     {:reply, {:error, :index_incomplete}, state}
   end
@@ -92,5 +105,5 @@ defmodule MBC.Blockchain.LogServer do
 	{:ok, block}
     end
   end
-  
+
 end

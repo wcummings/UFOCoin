@@ -9,8 +9,8 @@ defmodule MBC.Miner.MinerServer do
 
   @initial_state %{pids: [], proc_count: nil}
   
-  def start_link(opts) do
-    GenServer.start_link(__MODULE__, [], opts)
+  def start_link do
+    GenServer.start_link(__MODULE__, [], name: __MODULE__)
   end
 
   def new_block(tip) do

@@ -1,10 +1,8 @@
 defmodule MBC.P2P.ConnectionSupervisor do
   use Supervisor
 
-  @name MBC.P2P.ConnectionSupervisor
-
-  def start_link(opts) do
-    Supervisor.start_link(__MODULE__, [], opts)
+  def start_link do
+    Supervisor.start_link(__MODULE__, [], name: __MODULE__)
   end
 
   def init([]) do
@@ -12,7 +10,7 @@ defmodule MBC.P2P.ConnectionSupervisor do
   end
 
   def new_connection(socket) do
-    Supervisor.start_child(@name, [socket])
+    Supervisor.start_child(__MODULE__, [socket])
   end
   
 end

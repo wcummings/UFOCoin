@@ -1,10 +1,8 @@
 defmodule MBC.Miner.WorkerSupervisor do
   use Supervisor
 
-  @name MBC.Miner.WorkerSupervisor
-
-  def start_link(opts) do
-    Supervisor.start_link(__MODULE__, [], opts)
+  def start_link do
+    Supervisor.start_link(__MODULE__, [], name: __MODULE__)
   end
 
   def init([]) do
@@ -12,7 +10,7 @@ defmodule MBC.Miner.WorkerSupervisor do
   end
 
   def start_child(block) do
-    Supervisor.start_child(@name, [block])
+    Supervisor.start_child(__MODULE__, [block])
   end
   
 end

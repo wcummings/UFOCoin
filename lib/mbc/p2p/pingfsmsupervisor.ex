@@ -1,10 +1,8 @@
 defmodule MBC.P2P.PingFSMSupervisor do
   use Supervisor
 
-  @name MBC.P2P.PingFSMSupervisor
-
-  def start_link(opts) do
-    Supervisor.start_link(__MODULE__, [], opts)
+  def start_link do
+    Supervisor.start_link(__MODULE__, [], name: __MODULE__)
   end
 
   def init([]) do
@@ -12,7 +10,7 @@ defmodule MBC.P2P.PingFSMSupervisor do
   end
 
   def start_child(pid) do
-    Supervisor.start_child(@name, [pid])
+    Supervisor.start_child(__MODULE__, [pid])
   end
   
 end

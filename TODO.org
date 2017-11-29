@@ -12,3 +12,6 @@
   CLOSED: [2017-11-28 Tue 15:56]
 * TODO Orphan handler
 * TODO Un-used map in AddrServer
+* TODO Type for block header
+* DONE Update other supervisors w/ shorthand worker/2 and supervisor/2
+  CLOSED: [2017-11-29 Wed 16:15]

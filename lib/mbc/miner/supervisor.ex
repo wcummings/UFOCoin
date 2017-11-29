@@ -7,8 +7,8 @@ defmodule MBC.Miner.Supervisor do
 
   def init([]) do
     children = [
-      {MBC.Miner.MinerServer, name: MBC.Miner.MinerServer},
-      {MBC.Miner.WorkerSupervisor, name: MBC.Miner.WorkerSupervisor}
+      worker(MBC.Miner.MinerServer, []),
+      supervisor(MBC.Miner.WorkerSupervisor, [])
     ]
 
     Supervisor.init(children, strategy: :one_for_all)

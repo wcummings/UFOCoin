@@ -5,8 +5,8 @@ defmodule MBC.P2P.AddrServer do
 
   @initial_state %{addrs_by_ref: %{}, pids_by_ref: %{}}
   
-  def start_link(opts) do
-    GenServer.start_link(__MODULE__, [], opts)
+  def start_link do
+    GenServer.start_link(__MODULE__, [], name: __MODULE__)
   end
 
   def checkout() do
