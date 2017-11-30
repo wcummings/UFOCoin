@@ -45,6 +45,9 @@ defmodule MBC.Blockchain.Block do
     %MBC.Blockchain.Block{header: block_header, txs: []}
   end
 
+  # IMPORTANT NOTE: This should check if the block is orphaned LAST,
+  # the caller should be able to trust that an orphaned block is valid,
+  # aside from being an orphan.
   @spec validate(t) :: :ok | {:error, block_validation_error}
   def validate(new_block = %MBC.Blockchain.Block{header: block_header}) do
     case BlockHeader.check_nonce(block_header) do

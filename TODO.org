@@ -20,4 +20,12 @@
 * DONE Type specs
   CLOSED: [2017-11-29 Wed 19:34]
 * TODO Reject message
+* TODO Housecleaning server 
+
+For expiring keys in mnesia and shit like that
+* TODO Behavior for mnesia tables?
+* TODO Make tests not suck
+* TODO Repalce alias w/ import where appropriate
+* TODO Macro for size of functions returning binaries
+
 
