@@ -36,7 +36,7 @@ defmodule MBC.Miner.Worker do
     Logger.info "Successfully mined block, difficulty = #{target}, block_hash = #{Base.encode16(hash)}"
     new_block = %{block | header: BlockHeader.decode(valid_block_header)}
     :ok = LogServer.update(new_block)
-    P2PConnection.broadcast(%P2PPacket{proc: :block, extra_data: Block.decode(block)})    
+    P2PConnection.broadcast(%P2PPacket{proc: :block, extra_data: new_block})
   end
 
   def mine(block_header, target) when is_binary(block_header) do

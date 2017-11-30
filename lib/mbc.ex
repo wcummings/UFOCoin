@@ -40,9 +40,7 @@ defmodule MBC do
     seed_nodes = lookup_seed_nodes()
     default_port = Application.get_env(:mbc, :default_port)
 
-    Enum.each(seed_nodes, fn ip ->
-      MBC.P2P.AddrTable.insert(%MBC.P2P.Addr{ip: ip, port: default_port})
-    end)
+    for ip <- seed_nodes, do: MBC.P2P.AddrTable.insert(%MBC.P2P.Addr{ip: ip, port: default_port})
 
     if Application.get_env(:mbc, :detect_ip) do
       local_ip = get_local_ipv4_address()

@@ -11,6 +11,7 @@ defmodule MBC.Blockchain.BlockValidatorServer do
     GenServer.start_link(__MODULE__, [], name: __MODULE__)
   end
 
+  @spec validate_block(Block.t) :: :ok | {:error, Block.block_validation_error}
   def validate_block(block) do
     GenServer.call(__MODULE__, {:validate_block, block})
   end

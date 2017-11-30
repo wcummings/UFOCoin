@@ -21,10 +21,6 @@ defmodule MBC.P2P.Handshake do
     GenServer.start_link(__MODULE__, [socket], opts)
   end
   
-  def send_packet(pid, packet = %P2PPacket{}) do
-    GenServer.cast(pid, {:send_packet, packet})
-  end
-
   def init([socket]) do
     {:ok, {address, port}} = :inet.peername(socket)
     address_string = :inet.ntoa(address)

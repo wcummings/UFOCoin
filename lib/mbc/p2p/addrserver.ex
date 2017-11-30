@@ -1,5 +1,7 @@
 require Logger
 
+alias MBC.P2P.Addr, as: P2PAddr
+
 defmodule MBC.P2P.AddrServer do
   use GenServer
 
@@ -9,7 +11,8 @@ defmodule MBC.P2P.AddrServer do
     GenServer.start_link(__MODULE__, [], name: __MODULE__)
   end
 
-  def checkout() do
+  @spec checkout() :: {:ok, P2PAddr.t} | {:error, :exhausted}
+  def checkout do
     GenServer.call(__MODULE__, :checkout)
   end
 

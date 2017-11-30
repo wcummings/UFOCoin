@@ -4,6 +4,6 @@ alias MBC.Blockchain.Output, as: Output
 defmodule MBC.Blockchain.TX do
   defstruct version: 1, inputs: nil, outputs: nil
 
-  @type t :: %MBC.Blockchain.TX{version: non_neg_integer(), inputs: list(Input.t), outputs: list(Output.t)}
+  @type t :: %MBC.Blockchain.TX{version: non_neg_integer(), inputs: list(), outputs: list()}
 
 end

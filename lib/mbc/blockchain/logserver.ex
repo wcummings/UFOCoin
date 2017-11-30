@@ -1,6 +1,7 @@
 require Logger
 
 alias MBC.Blockchain.BlockHashIndex, as: BlockHashIndex
+alias MBC.Blockchain.BlockHeader, as: BlockHeader
 alias MBC.Blockchain.Block, as: Block
 alias MBC.Blockchain.Log, as: BlockchainLog
 alias MBC.Miner.MinerServer, as: MinerServer
@@ -24,18 +25,22 @@ defmodule MBC.Blockchain.LogServer do
     {:ok, %{@initial_state | log: log}}
   end
 
+  @spec get_block_by_hash(BlockHeader.block_hash) :: {:ok, Block.t} | {:error, :notfound}
   def get_block_by_hash(block_hash) do
     GenServer.call(__MODULE__, {:get_block_by_hash, block_hash})
   end
-  
+
+  @spec get_tip() :: {:ok, Block.t}
   def get_tip do
     GenServer.call(__MODULE__, :get_tip)
   end
 
+  @spec update(Block.t) :: :ok
   def update(block = %Block{}) do
     update(Block.encode(block))
   end
-  
+
+  @spec update(Block.encoded_block) :: :ok  
   def update(block) do
     GenServer.cast(__MODULE__, {:update, block})
   end
@@ -46,7 +51,7 @@ defmodule MBC.Blockchain.LogServer do
 
   def get_prev_blocks(number_of_blocks, tip, blocks) do
     {:ok, block} = get_block_by_hash(tip.prev_block_hash)
-    if (block.height == 0) or (tip.height - block.height == number_of_blocks) do
+    if (block.header.height == 0) or (tip.header.height - block.header.height == number_of_blocks) do
       blocks
     else
       get_prev_blocks(number_of_blocks, tip, [block|blocks])

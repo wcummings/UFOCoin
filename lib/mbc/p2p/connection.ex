@@ -25,12 +25,25 @@ defmodule MBC.P2P.Connection do
     GenServer.start_link(__MODULE__, [socket], [])
   end
 
+  @spec send_packet(pid(), P2PPacket.t) :: :ok
   def send_packet(pid, packet = %P2PPacket{}) when is_pid(pid) do
     GenServer.cast(pid, {:send_packet, packet})
   end
 
   def send_packet(socket, packet = %P2PPacket{}) do
     :ok = :gen_tcp.send(socket, P2PPacket.encode(packet))
+  end
+
+  @spec broadcast(P2PPacket.t) :: :ok
+  def broadcast(packet) do
+    broadcast(packet, [])
+  end
+  
+  def broadcast(packet, excluded_pids) do
+    Registry.dispatch(:connection_registry, "connection", fn entries ->
+      Enum.filter(entries, fn {pid, _} -> not :lists.member(pid, excluded_pids) end)
+      |> Enum.each(fn {pid, _} -> send_packet(pid, packet) end)
+    end)
   end
   
   def init([socket]) do
@@ -114,15 +127,4 @@ defmodule MBC.P2P.Connection do
     state
   end
 
-  def broadcast(packet) do
-    broadcast(packet, [])
-  end
-  
-  def broadcast(packet, excluded_pids) do
-    Registry.dispatch(:connection_registry, "connection", fn entries ->
-      Enum.filter(entries, fn {pid, _} -> not :lists.member(pid, excluded_pids) end)
-      |> Enum.each(fn {pid, _} -> send_packet(pid, packet) end)
-    end)
-  end
-  
 end

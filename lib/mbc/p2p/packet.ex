@@ -5,6 +5,7 @@ defmodule MBC.P2P.Packet do
   @enforce_keys [:proc]
   defstruct proc: nil, extra_data: []
 
+  @type encoded_packet :: binary()
   @type version_p2p_packet :: %MBC.P2P.Packet{proc: :version}
   @type versionack_p2p_packet :: %MBC.P2P.Packet{proc: :versionack}
   @type addr_p2p_packet :: %MBC.P2P.Packet{proc: :addr, extra_data: list(P2PAddr.t)}
@@ -14,6 +15,7 @@ defmodule MBC.P2P.Packet do
   @type block_p2p_packet :: %MBC.P2P.Packet{proc: :block, extra_data: Block.t}
   @type t :: ping_p2p_packet | pong_p2p_packet | getaddrs_p2p_packet | addr_p2p_packet | version_p2p_packet | versionack_p2p_packet | block_p2p_packet
 
+  @spec decode(encoded_packet) :: t
   def decode(<<0x00, 0x01, version :: binary>>) do
     %MBC.P2P.Packet{proc: :version, extra_data: version}
   end
@@ -55,6 +57,7 @@ defmodule MBC.P2P.Packet do
     acc
   end
 
+  @spec encode(t) :: encoded_packet
   def encode(%MBC.P2P.Packet{proc: :version, extra_data: version}) do
     <<0x00, 0x01, version :: binary>>
   end

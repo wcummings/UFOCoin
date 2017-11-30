@@ -17,4 +17,7 @@
   CLOSED: [2017-11-29 Wed 18:03]
 * DONE Update other supervisors w/ shorthand worker/2 and supervisor/2
   CLOSED: [2017-11-29 Wed 16:15]
-* TODO Type specs
+* DONE Type specs
+  CLOSED: [2017-11-29 Wed 19:34]
+* TODO Reject message
+
