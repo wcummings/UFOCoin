@@ -21,7 +21,8 @@ defmodule MBC do
     Logger.info "Initializing mnesia tables..."
     mnesia_tables = [
       MBC.P2P.AddrTable,
-      MBC.Blockchain.BlockHashIndex
+      MBC.Blockchain.BlockHashIndex,
+      MBC.Blockchain.OrphanBlockTable
     ]
     
     Enum.each(mnesia_tables, fn table ->
