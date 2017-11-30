@@ -5,7 +5,7 @@ defmodule MBC.P2P.Addr do
   defstruct [:ip, :port, :last_seen]
 
   @type encoded_addr :: binary
-  @type t :: %MBC.P2P.Addr{ip: tuple, port: non_neg_integer, last_seen: non_neg_integer}
+  @type t :: %MBC.P2P.Addr{ip: tuple, port: non_neg_integer, last_seen: non_neg_integer | nil}
 
   @spec encode(t) :: encoded_addr
   def encode(%MBC.P2P.Addr{ip: ip, port: port}) do

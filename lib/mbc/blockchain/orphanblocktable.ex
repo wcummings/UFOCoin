@@ -25,7 +25,7 @@ defmodule MBC.Blockchain.OrphanBlockTable do
 
   @spec delete(BlockHeader.block_hash) :: :ok
   def delete(block_hash) do
-    {:atomic, :ok} = :mnesia.transaction(fn -> :mnesia.delete({OrphanBlockTable , block_hash}) end)
+    {:atomic, :ok} = :mnesia.transaction(fn -> :mnesia.delete({OrphanBlockTable, block_hash}) end)
     :ok
   end
   
