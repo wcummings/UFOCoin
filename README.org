@@ -1,6 +1,4 @@
-* Minimal Blockchain
-
-Repo for me to experiment with Bitcoin and blockchain related concepts.
+* WhipCash
 
 [[https://github.com/wcummings/OTC/blob/master/fault_tolerance.png]]
 
@@ -10,8 +8,7 @@ Repo for me to experiment with Bitcoin and blockchain related concepts.
    - [X] Broadcast
    - [X] Mining empty blocks
    - [X] Append-only block store + indices
-   - [ ] Block propagation
-   - [ ] Mining
+   - [X] Block propagation
    - [ ] Key management
    - [ ] TX signing etc.
    - [ ] Everything else

@@ -1,8 +1,8 @@
-defmodule MBC.Mixfile do
+defmodule WC.Mixfile do
   use Mix.Project
 
   def project do
-    [app: :mbc,
+    [app: :wc,
      version: "0.1.0",
      # elixir: "~> 1.4",
      build_embedded: Mix.env == :prod,
@@ -13,7 +13,7 @@ defmodule MBC.Mixfile do
   def application do
     [
       extra_applications: [:logger, :mnesia, :crypto],
-      mod: {MBC, []}
+      mod: {WC, []}
     ]
   end
 

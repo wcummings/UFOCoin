@@ -29,16 +29,16 @@ use Mix.Config
 #
 #     import_config "#{Mix.env}.exs"
 
-config :mbc,
+config :wc,
   default_port: 9009,
   port: 9009,
   detect_ip: true,
   ip: "127.0.0.1",
   outbound_connections: 5,
   seed_dns: 'test1.wpc.io',
-  key_dir: "/etc/mbc/keys",
+  key_dir: "/etc/wc/keys",
   mining_proc_count: 1,
-  # data_dir: "/var/mbc/"
+  # data_dir: "/var/wc/"
   data_dir: "."
 
 config :logger, :console, metadata: [:module, :function, :line]

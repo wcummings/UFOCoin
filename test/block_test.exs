@@ -1,11 +1,11 @@
-alias MBC.Blockchain.Block, as: Block
+alias WC.Blockchain.Block, as: Block
 
 defmodule BlockTest do
   use ExUnit.Case
-  doctest MBC
+  doctest WC
 
   test "Can encode and decode" do
-    block = MBC.genesis_block
+    block = WC.genesis_block
     encoded_block = Block.encode(block)
     decoded_block = Block.decode(encoded_block)
     assert block == decoded_block

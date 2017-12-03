@@ -13,7 +13,7 @@ RUN mix clean
 RUN mix compile
 RUN MIX_ENV=prod mix release --env=prod
 RUN mkdir -p /app
-RUN cp _build/prod/rel/mbc/releases/0.1.0/mbc.tar.gz /app
+RUN cp _build/prod/rel/wc/releases/0.1.0/wc.tar.gz /app
 WORKDIR /app/
-RUN tar -xvzf mbc.tar.gz
-CMD ["/app/bin/mbc", "foreground"]
+RUN tar -xvzf wc.tar.gz
+CMD ["/app/bin/wc", "foreground"]
