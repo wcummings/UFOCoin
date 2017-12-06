@@ -1,6 +1,7 @@
 require Logger
 
 alias WC.Blockchain.BlockHashIndex, as: BlockHashIndex
+alias WC.Blockchain.PrevBlockHashIndex, as: PrevBlockHashIndex
 alias WC.Blockchain.BlockHeader, as: BlockHeader
 alias WC.Blockchain.Block, as: Block
 alias WC.Blockchain.Log, as: BlockchainLog
@@ -10,7 +11,7 @@ defmodule WC.Blockchain.LogServer do
   use GenServer
 
   @initial_state %{tip: nil, index_complete: false, log: nil}
-  
+
   def start_link do
     GenServer.start_link(__MODULE__, [], name: __MODULE__)
   end
@@ -27,9 +28,14 @@ defmodule WC.Blockchain.LogServer do
 
   @spec get_block_by_hash(BlockHeader.block_hash) :: {:ok, Block.t} | {:error, :notfound}
   def get_block_by_hash(block_hash) do
-    GenServer.call(__MODULE__, {:get_block_by_hash, block_hash})
+    GenServer.call(__MODULE__, {:get_block_with_index, BlockHashIndex, block_hash})
   end
 
+  @spec get_block_by_prev_hash(BlockHeader.block_hash) :: {:ok, Block.t} | {:error, :notfound}
+  def get_block_by_prev_hash(prev_block_hash) do
+    GenServer.call(__MODULE__, {:get_block_with_index, PrevBlockHashIndex, prev_block_hash})
+  end
+  
   @spec get_tip() :: {:ok, Block.t}
   def get_tip do
     GenServer.call(__MODULE__, :get_tip)
@@ -57,13 +63,13 @@ defmodule WC.Blockchain.LogServer do
       get_prev_blocks(number_of_blocks, tip, [block|blocks])
     end
   end
-  
+
   def handle_call(_, _, state = %{index_complete: false}) do
     {:reply, {:error, :index_incomplete}, state}
   end
-  
-  def handle_call({:get_block_by_hash, block_hash}, _from, state = %{log: log}) do
-    {:reply, get_block_by_hash(log, block_hash), state}
+
+  def handle_call({:get_block_with_index, index, block_hash}, _from, state = %{log: log}) do
+    {:reply, get_block_with_index(log, index, block_hash), state}
   end
   
   def handle_call(:get_tip, _from, state = %{tip: tip}) do
@@ -75,6 +81,7 @@ defmodule WC.Blockchain.LogServer do
     block_hash = Block.hash(encoded_block)
     offset = BlockchainLog.append_block(log, encoded_block)    
     :ok = BlockHashIndex.insert(block_hash, offset)
+    :ok = PrevBlockHashIndex.insert(block.prev_block_hash, offset)
     new_tip = if block.header.height > tip.header.height do
       MinerServer.new_block(block)
       block      
@@ -100,10 +107,16 @@ defmodule WC.Blockchain.LogServer do
     end
   end
 
-  def get_block_by_hash(log, block_hash) do
-    case BlockHashIndex.get_offset(block_hash) do
+  def get_block_with_index(log, index, block_hash) do
+    case index.get_offset(block_hash) do
       {:error, :notfound} ->
 	{:error, :notfound}
+      {:ok, offsets} when is_list(offsets) ->
+	blocks = for offset <- offsets do
+	    {:ok, {encoded_block, _}} = BlockchainLog.read_block(log, offset)
+	    Block.decode(encoded_block)
+	  end
+	{:ok, blocks}
       {:ok, offset} ->
 	{:ok, {encoded_block, _}} = BlockchainLog.read_block(log, offset)
 	block = Block.decode(encoded_block)
