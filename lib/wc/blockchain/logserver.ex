@@ -5,6 +5,7 @@ alias WC.Blockchain.PrevBlockHashIndex, as: PrevBlockHashIndex
 alias WC.Blockchain.BlockHeader, as: BlockHeader
 alias WC.Blockchain.Block, as: Block
 alias WC.Blockchain.Log, as: BlockchainLog
+alias WC.Blockchain.InvItem, as: InvItem
 alias WC.Miner.MinerServer, as: MinerServer
 
 defmodule WC.Blockchain.LogServer do
@@ -51,16 +52,52 @@ defmodule WC.Blockchain.LogServer do
     GenServer.cast(__MODULE__, {:update, block})
   end
 
+  # Build a list of block hashes from newest to genesis, dense to start, then sparse
+  @spec get_block_locator() :: list(InvItem.t)
+  def get_block_locator do
+    {:ok, tip} = get_tip()
+    genesis_block_hash = Block.hash(WC.genesis_block)
+    dense_hashes = for block <- get_prev_blocks(10, tip), do: Block.hash(block)
+    if tip.header.height < 10 do
+      dense_hashes ++ [genesis_block_hash]
+    else
+      dense_hashes ++ get_prev_block_hashes_sparse(tip) ++ [genesis_block_hash]
+    end
+    |> Enum.map(fn block_hash -> %InvItem{type: :block, hash: block_hash} end)
+  end
+
+  def get_prev_block_hashes_sparse(tip) do
+    get_prev_block_hashes_sparse(tip, 1, 0, [])
+  end
+  
+  def get_prev_block_hashes_sparse(tip, step, count, acc) do
+    {:ok, block} = get_block_by_hash(tip.header.prev_block_hash)
+    if block.header.height == 0 do
+      acc
+    else
+      if count == step do
+	get_prev_block_hashes_sparse(block, step * 2, 0, [Block.hash(block)|acc])
+      else
+	get_prev_block_hashes_sparse(block, step, count + 1, acc)
+      end
+    end
+  end
+
+  def get_prev_blocks(number_of_blocks) do
+    {:ok, tip} = get_tip()
+    get_prev_blocks(number_of_blocks, tip)
+  end
+  
   def get_prev_blocks(number_of_blocks, tip) do
     get_prev_blocks(number_of_blocks, tip, [])
   end
-
-  def get_prev_blocks(number_of_blocks, tip, blocks) do
-    {:ok, block} = get_block_by_hash(tip.prev_block_hash)
+  
+  def get_prev_blocks(number_of_blocks, tip, acc) do
+    {:ok, block} = get_block_by_hash(tip.header.prev_block_hash)
     if (block.header.height == 0) or (tip.header.height - block.header.height == number_of_blocks) do
-      blocks
+      acc
     else
-      get_prev_blocks(number_of_blocks, tip, [block|blocks])
+      get_prev_blocks(number_of_blocks, block, [block|acc])
     end
   end
 

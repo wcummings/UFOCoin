@@ -16,7 +16,7 @@ defmodule WC do
   end
   
   def start(_, _) do
-    Logger.info "Starting WC"
+    Logger.info "Starting WhipCash node"
 
     Logger.info "Initializing mnesia tables..."
     mnesia_tables = [
