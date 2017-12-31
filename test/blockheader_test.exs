@@ -1,5 +1,4 @@
 alias WC.Blockchain.BlockHeader, as: BlockHeader
-alias WC.Blockchain.Block, as: Block
 
 defmodule BlockHeaderTest do
   use ExUnit.Case
@@ -14,7 +13,7 @@ defmodule BlockHeaderTest do
 
   test "Update nonce nop" do
     block_header = BlockHeader.encode(WC.genesis_block.header)
-    block_header2 = Block.update_nonce(block_header, <<0, 0, 0, 0>>)
+    block_header2 = BlockHeader.update_nonce(block_header, <<0, 0, 0, 0>>)
     assert block_header == block_header2
   end
   
