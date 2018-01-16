@@ -22,6 +22,7 @@ defmodule WC do
     mnesia_tables = [
       WC.P2P.AddrTable,
       WC.Blockchain.BlockHashIndex,
+      WC.Blockchain.PrevBlockHashIndex,
       WC.Blockchain.OrphanBlockTable
     ]
     
