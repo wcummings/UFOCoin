@@ -19,6 +19,7 @@ defmodule WC.Mixfile do
 
   defp deps do
     [{:dialyxir, "~> 0.5", only: [:dev], runtime: false},
-     {:distillery, "~> 1.5", runtime: false}]
+     {:distillery, "~> 1.5", runtime: false},
+     {:nat_upnp, github: 'wcummings/nat_upnp'}]
   end
 end
