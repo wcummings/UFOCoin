@@ -1,10 +1,12 @@
+alias WC.Blockchain.BlockHeader, as: BlockHeader
+
 defmodule WC.Blockchain.InvItem do
   @enforce_keys [:type, :hash]
   defstruct [:type, :hash]
 
-  @type type :: :block
+  @type itemtype :: :block
   @type encoded_invitem :: binary
-  @type t :: %WC.Blockchain.InvItem{type: type, hash: BlockHeader.hash}
+  @type t :: %WC.Blockchain.InvItem{type: itemtype, hash: BlockHeader.block_hash}
 
   @spec encode(t) :: encoded_invitem
   def encode(%WC.Blockchain.InvItem{type: :block, hash: block_hash}) do

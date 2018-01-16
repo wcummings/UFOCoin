@@ -10,12 +10,12 @@ defmodule WC.Blockchain.BlockHeader do
 
   @spec encode(t) :: encoded_block_header
   def encode(%WC.Blockchain.BlockHeader{prev_block_hash: prev_block_hash, timestamp: timestamp, difficulty: difficulty, height: height, nonce: nonce}) do
-    <<0x00, 0x01>> <> prev_block_hash <> <<timestamp :: size(64)>> <> <<difficulty :: size(32)>> <> <<height :: size(32)>> <> nonce
+    <<0x00, 0x01, prev_block_hash :: binary, timestamp :: size(64), difficulty :: size(32), height :: size(32), nonce :: binary>>
   end
 
   @spec decode(encoded_block_header) :: t
-  def decode(<<0x00, 0x01, prev_block_hash :: size(256), timestamp :: size(64), difficulty :: size(32), height :: size(32), nonce :: size(32)>>) do
-    %WC.Blockchain.BlockHeader{prev_block_hash: <<prev_block_hash :: size(256)>>, timestamp: timestamp, difficulty: difficulty, height: height, nonce: <<nonce :: size(32)>>}
+  def decode(<<0x00, 0x01, prev_block_hash :: binary - size(32), timestamp :: size(64), difficulty :: size(32), height :: size(32), nonce :: binary - size(4)>>) do
+    %WC.Blockchain.BlockHeader{prev_block_hash: prev_block_hash, timestamp: timestamp, difficulty: difficulty, height: height, nonce: nonce}
   end
 
   @spec hash(t) :: block_hash
@@ -41,8 +41,8 @@ defmodule WC.Blockchain.BlockHeader do
 
   @spec update_nonce(encoded_block_header, binary()) :: encoded_block_header
   def update_nonce(encoded_block_header, new_nonce) do
-    <<0x00, 0x01, prev_block_hash :: size(256), timestamp :: size(64), difficulty :: size(32), height :: size(32), _nonce :: size(32)>> = encoded_block_header
-    <<0x00, 0x01, prev_block_hash :: size(256), timestamp :: size(64), difficulty :: size(32), height :: size(32), new_nonce :: binary>>
+    <<0x00, 0x01, prev_block_hash :: binary - size(32), timestamp :: size(64), difficulty :: size(32), height :: size(32), _n :: binary - size(4)>> = encoded_block_header
+    <<0x00, 0x01, prev_block_hash :: binary, timestamp :: size(64), difficulty :: size(32), height :: size(32), new_nonce :: binary>>
   end
 
 end

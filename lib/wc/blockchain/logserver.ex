@@ -118,7 +118,7 @@ defmodule WC.Blockchain.LogServer do
     block_hash = Block.hash(encoded_block)
     offset = BlockchainLog.append_block(log, encoded_block)    
     :ok = BlockHashIndex.insert(block_hash, offset)
-    :ok = PrevBlockHashIndex.insert(block.prev_block_hash, offset)
+    :ok = PrevBlockHashIndex.insert(block.header.prev_block_hash, offset)
     new_tip = if block.header.height > tip.header.height do
       MinerServer.new_block(block)
       block      

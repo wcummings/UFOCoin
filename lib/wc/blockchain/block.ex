@@ -8,8 +8,10 @@ defmodule WC.Blockchain.Block do
   @enforce_keys [:header, :txs]
   defstruct [:header, :txs]
 
+  @hardcoded_difficulty 8
+  
   @type block_validation_error :: :notfound | :orphan | :badheight | :alreadyaccepted
-  @type encoded_block :: binary()
+  @type encoded_block :: binary
   @type t :: %WC.Blockchain.Block{header: BlockHeader.t, txs: list(TX.t)}
 
   @spec encode(t) :: encoded_block
@@ -40,7 +42,7 @@ defmodule WC.Blockchain.Block do
     prev_block_hash = BlockHeader.hash(prev_block_header)
     block_header = %BlockHeader{prev_block_hash: prev_block_hash,
 				height: prev_block_header.height + 1,
-				difficulty: 8,
+				difficulty: @hardcoded_difficulty,
 				timestamp: :os.system_time(:millisecond)}
     %WC.Blockchain.Block{header: block_header, txs: []}
   end

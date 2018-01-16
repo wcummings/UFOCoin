@@ -33,7 +33,7 @@ defmodule WC.Blockchain.BlockValidatorServer do
 	    orphans = find_orphans(block)
 	    # Nested mnesia transactions
 	    :mnesia.transaction(fn ->
-	      Enum.each(orphans, fn -> :ok = LogServer.update(block) end) # NOTE: This is order sensitive
+	      Enum.each(orphans, fn _ -> :ok = LogServer.update(block) end) # NOTE: This is order sensitive
 	      Enum.map(orphans, &Block.hash/1)
 	      |> Enum.each(&OrphanBlockTable.delete/1)
 	    end)
