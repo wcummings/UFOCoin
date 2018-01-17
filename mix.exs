@@ -12,7 +12,7 @@ defmodule WC.Mixfile do
 
   def application do
     [
-      extra_applications: [:logger, :mnesia, :crypto],
+      extra_applications: [:logger, :mnesia, :crypto, :xmerl],
       mod: {WC, []}
     ]
   end
