@@ -23,8 +23,11 @@ defmodule WC.P2P.UPnPServer do
 	{:ok, context} ->
 	  case :nat.add_port_mapping(context, :tcp, external_port, internal_port, nat_description(), 1) do
 	    :ok ->
-	      {:ok, ip_address} = :nat.get_external_address(context)
-	      {:ok, ip_address, context}
+	      case :nat.get_external_address(context) do
+		{:ok, ip_address} ->
+		  {:ok, ip_address, context}
+		error ->
+		  error
 	    error ->
 	      error
 	  end
