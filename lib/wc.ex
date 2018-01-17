@@ -30,6 +30,7 @@ defmodule WC do
     ]
     
     Enum.each(mnesia_tables, fn table ->
+      Logger.info "Initializing #{inspect(table)}..."
       case table.init do
 	{:aborted, {:already_exists, _}} ->
 	  :ok
@@ -65,7 +66,7 @@ defmodule WC do
     end
     
     ip = Application.get_env(:wc, :ip)
-    Logger.info "Listening on #{ip}"
+    Logger.info "Listening on #{inspect(ip)}"
 
     outbound_connections = Application.get_env(:wc, :outbound_connections)
     for _ <- 1 .. outbound_connections, do: {:ok, _} = WC.P2P.ClientFSMSupervisor.start_client

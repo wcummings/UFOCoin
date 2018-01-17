@@ -31,9 +31,10 @@ use Mix.Config
 
 config :wc,
   default_port: 9009,
+  internal_port: 9009,
   port: 9009,
-  detect_ip: true,
-  ip: "127.0.0.1",
+  enable_nat: true,
+  # ip: {127, 0, 0, 1},
   outbound_connections: 5,
   seed_dns: 'test1.wpc.io',
   key_dir: "/etc/wc/keys",

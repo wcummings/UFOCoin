@@ -9,6 +9,7 @@
    - [X] Mining empty blocks
    - [X] Append-only block store + indices
    - [X] Block propagation
+   - [X] UPnP
    - [ ] Key management
    - [ ] TX signing etc.
    - [ ] Everything else

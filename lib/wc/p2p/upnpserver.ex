@@ -35,7 +35,7 @@ defmodule WC.P2P.UPnPServer do
   end
 
   def nat_description do
-    "WhipCash" ++ WC.version
+    :erlang.binary_to_list("WhipCash" <> WC.version)
   end
   
 end
