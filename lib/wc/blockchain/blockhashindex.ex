@@ -12,7 +12,7 @@ defmodule WC.Blockchain.BlockHashIndex do
     result
   end
 
-  @spec get_offset(BlockHeader.block_hash) :: {:ok, non_neg_integer()} | {:error, :notfound}
+  @spec get_offset(BlockHeader.block_hash) :: {:ok, list(non_neg_integer)} | {:error, :notfound}
   def get_offset(block_hash) do
     {:atomic, result} = :mnesia.transaction(fn -> :mnesia.read(BlockHashIndexTable, block_hash) end)
     case result do

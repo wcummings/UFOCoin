@@ -32,8 +32,8 @@ defmodule WC.Blockchain.LogServer do
     GenServer.call(__MODULE__, {:get_block_with_index, BlockHashIndex, block_hash})
   end
 
-  @spec get_block_by_prev_hash(BlockHeader.block_hash) :: {:ok, Block.t} | {:error, :notfound}
-  def get_block_by_prev_hash(prev_block_hash) do
+  @spec get_blocks_by_prev_hash(BlockHeader.block_hash) :: {:ok, list(Block.t)} | {:error, :notfound}
+  def get_blocks_by_prev_hash(prev_block_hash) do
     GenServer.call(__MODULE__, {:get_block_with_index, PrevBlockHashIndex, prev_block_hash})
   end
   
@@ -83,6 +83,30 @@ defmodule WC.Blockchain.LogServer do
     end
   end
 
+  def get_next_blocks(number_of_blocks, block) do
+    get_next_blocks(number_of_blocks, [block], [])
+  end
+  
+  def get_next_blocks(number_of_blocks, _next_blocks, acc) when number_of_blocks <= 0 do
+    Enum.take(acc, -number_of_blocks)
+  end
+  
+  def get_next_blocks(number_of_blocks, next_blocks, acc) do
+    next_blocks = Enum.map(next_blocks, fn block -> Block.hash(block) |> get_blocks_by_prev_hash end)
+    |> Enum.filter(fn
+      {:ok, _blocks} -> true
+      _error -> false
+    end)
+    |> Enum.map(fn {:ok, blocks} -> blocks end)
+
+    case next_blocks do
+      [] ->
+	get_next_blocks(0, [], acc)
+      _ ->
+	get_next_blocks(number_of_blocks - length(next_blocks), next_blocks, next_blocks ++ acc)
+    end
+  end
+  
   def get_prev_blocks(number_of_blocks) do
     {:ok, tip} = get_tip()
     get_prev_blocks(number_of_blocks, tip)
