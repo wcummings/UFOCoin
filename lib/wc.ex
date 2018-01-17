@@ -54,14 +54,14 @@ defmodule WC do
     
     case UPnPServer.get_ip(internal_port, default_port) do
       {:ok, ip_address, nat_context} ->
-	{:ok, _} = Supervisor.start_child(pid, worker(UPnPServer, [nat_context, internal_port, default_port, 0]))
+	{:ok, _} = Supervisor.start_child(pid, worker(UPnPServer, [nat_context, internal_port, default_port, 3600]))
 	Application.put_env(:wc, :ip, ip_address)
       {:error, error} ->
-	Logger.info "NAT disabled: #{inspect(error)}"
+	Logger.info "UPnP failed: #{inspect(error)}"
     end
 
     if Application.get_env(:wc, :ip) == nil do
-      Logger.info "No IP, detecting local IP..."
+      Logger.info "No IP from UPnP or config, detecting local IP..."
       Application.put_env(:wc, :ip, get_local_ipv4_address())
     end
     

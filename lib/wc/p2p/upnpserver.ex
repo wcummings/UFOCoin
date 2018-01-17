@@ -13,8 +13,8 @@ defmodule WC.P2P.UPnPServer do
 
   def handle_info(:timeout, state = %{context: context, internal_port: internal_port, external_port: external_port, timeout: timeout}) do
     Logger.info "Renewing UPnP lease..."
-    :ok = :nat_upnp.add_port_mapping(context, :tcp, external_port, internal_port, nat_description(), timeout)
-    {:noreply, state, div(timeout, 2)}
+    :nat_upnp.add_port_mapping(context, :tcp, external_port, internal_port, nat_description(), timeout)
+    {:noreply, state, div(timeout * 1000, 2)}
   end
 
   def get_ip(internal_port, external_port) do
