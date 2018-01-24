@@ -10,7 +10,8 @@ defmodule WC.Supervisor do
       worker(WC.Blockchain.LogServer, []),
       supervisor(WC.P2P.Supervisor, []),
       supervisor(WC.Miner.Supervisor, []),
-      worker(WC.Blockchain.BlockValidatorServer, [])
+      worker(WC.Blockchain.BlockValidatorServer, []),
+      worker(Cachex, [:block_cache, [limit: 500]])
     ]
 
     Supervisor.init(children, strategy: :one_for_one)

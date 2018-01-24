@@ -83,29 +83,30 @@ defmodule WC.Blockchain.LogServer do
     end
   end
 
-  def get_next_blocks(number_of_blocks, block) do
-    get_next_blocks(number_of_blocks, [block], [])
-  end
+  # FIXME: must follow _main chain_
+  # def get_next_blocks(number_of_blocks, block) do
+  #   get_next_blocks(number_of_blocks, [block], [])
+  # end
   
-  def get_next_blocks(number_of_blocks, _next_blocks, acc) when number_of_blocks <= 0 do
-    Enum.take(acc, -number_of_blocks)
-  end
+  # def get_next_blocks(number_of_blocks, _next_blocks, acc) when number_of_blocks <= 0 do
+  #   Enum.take(acc, -number_of_blocks)
+  # end
   
-  def get_next_blocks(number_of_blocks, next_blocks, acc) do
-    next_blocks = Enum.map(next_blocks, fn block -> Block.hash(block) |> get_blocks_by_prev_hash end)
-    |> Enum.filter(fn
-      {:ok, _blocks} -> true
-      _error -> false
-    end)
-    |> Enum.map(fn {:ok, blocks} -> blocks end)
+  # def get_next_blocks(number_of_blocks, next_blocks, acc) do
+  #   next_blocks = Enum.map(next_blocks, fn block -> Block.hash(block) |> get_blocks_by_prev_hash end)
+  #   |> Enum.filter(fn
+  #     {:ok, _blocks} -> true
+  #     _error -> false
+  #   end)
+  #   |> Enum.map(fn {:ok, blocks} -> blocks end)
 
-    case next_blocks do
-      [] ->
-	get_next_blocks(0, [], acc)
-      _ ->
-	get_next_blocks(number_of_blocks - length(next_blocks), next_blocks, next_blocks ++ acc)
-    end
-  end
+  #   case next_blocks do
+  #     [] ->
+  # 	get_next_blocks(0, [], acc)
+  #     _ ->
+  # 	get_next_blocks(number_of_blocks - length(next_blocks), next_blocks, next_blocks ++ acc)
+  #   end
+  # end
   
   def get_prev_blocks(number_of_blocks) do
     {:ok, tip} = get_tip()
@@ -136,7 +137,7 @@ defmodule WC.Blockchain.LogServer do
   def handle_call(:get_tip, _from, state = %{tip: tip}) do
     {:reply, {:ok, tip}, state}
   end
-  
+
   def handle_cast({:update, encoded_block}, state = %{tip: tip, log: log}) do
     block = Block.decode(encoded_block)
     block_hash = Block.hash(encoded_block)
@@ -174,15 +175,26 @@ defmodule WC.Blockchain.LogServer do
 	{:error, :notfound}
       {:ok, offsets} when is_list(offsets) ->
 	blocks = for offset <- offsets do
+	    read_block_with_cache(log, offset) |> Block.decode(encoded_block)
 	    {:ok, {encoded_block, _}} = BlockchainLog.read_block(log, offset)
 	    Block.decode(encoded_block)
 	  end
 	{:ok, blocks}
       {:ok, offset} ->
-	{:ok, {encoded_block, _}} = BlockchainLog.read_block(log, offset)
-	block = Block.decode(encoded_block)
+	block = read_block_with_cache(log, offset) |> Block.decode(encoded_block)
 	{:ok, block}
     end
   end
 
+  def read_block_with_cache(log, offset) do
+    case Cachex.get(:block_cache, offset) do
+      {:error, :no_cache} ->
+	{:ok, {encoded_block, _}} = BlockchainLog.read_block(log, offset)
+	{:ok, true} = Cachex.set(:block_cache, offset, encoded_block)
+	encoded_block
+      {:ok, encoded_block} ->
+	encoded_block
+    end
+  end
+  
 end
