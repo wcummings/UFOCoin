@@ -83,30 +83,30 @@ defmodule WC.Blockchain.LogServer do
     end
   end
 
-  # FIXME: must follow _main chain_
-  # def get_next_blocks(number_of_blocks, block) do
-  #   get_next_blocks(number_of_blocks, [block], [])
-  # end
+  @spec get_next_blocks_in_chain(non_neg_integer, Block.t) :: list(Block.t)
+  def get_next_blocks_in_chain(number_of_blocks, block) do
+    Enum.take(find_block_in_chain(block), -number_of_blocks)
+  end
   
-  # def get_next_blocks(number_of_blocks, _next_blocks, acc) when number_of_blocks <= 0 do
-  #   Enum.take(acc, -number_of_blocks)
-  # end
-  
-  # def get_next_blocks(number_of_blocks, next_blocks, acc) do
-  #   next_blocks = Enum.map(next_blocks, fn block -> Block.hash(block) |> get_blocks_by_prev_hash end)
-  #   |> Enum.filter(fn
-  #     {:ok, _blocks} -> true
-  #     _error -> false
-  #   end)
-  #   |> Enum.map(fn {:ok, blocks} -> blocks end)
+  @spec find_block_in_chain(Block.t) :: list
+  def find_block_in_chain(block) do
+    find_block_in_chain(block, [tip.prev_block_hash|Block.hash(tip)])
+  end
 
-  #   case next_blocks do
-  #     [] ->
-  # 	get_next_blocks(0, [], acc)
-  #     _ ->
-  # 	get_next_blocks(number_of_blocks - length(next_blocks), next_blocks, next_blocks ++ acc)
-  #   end
-  # end
+  # TODO: should limit this, we don't want to accept really old blocks
+  # anyway, and it will _hammer_ the cache
+  def find_block_in_chain(block, [prev_block_hash|hashes] = acc) do
+    case get_block_by_hash(prev_block_hash) do
+      {:ok, prev_block} ->
+	if prev_block == block do
+	  acc
+	else
+	  find_block_in_chain(block, [prev_block.prev_block_hash|hashes])
+	end
+      _error ->
+	{:error, :notfound}
+    end
+  end
   
   def get_prev_blocks(number_of_blocks) do
     {:ok, tip} = get_tip()
