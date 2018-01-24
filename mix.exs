@@ -21,7 +21,7 @@ defmodule WC.Mixfile do
   defp deps do
     [{:dialyxir, "~> 0.5", only: [:dev], runtime: false},
      {:distillery, "~> 1.5", runtime: false},
-     {:erlang_nat, github: 'wcummings/erlang-nat'},
+     {:nat, github: 'wcummings/erlang-nat'},
      {:cachex, "~> 2.1"}]
   end
 end

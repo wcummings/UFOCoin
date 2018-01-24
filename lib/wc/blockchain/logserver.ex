@@ -90,6 +90,7 @@ defmodule WC.Blockchain.LogServer do
   
   @spec find_block_in_chain(Block.t) :: list
   def find_block_in_chain(block) do
+    tip = get_tip()
     find_block_in_chain(block, [tip.prev_block_hash|Block.hash(tip)])
   end
 
@@ -175,13 +176,11 @@ defmodule WC.Blockchain.LogServer do
 	{:error, :notfound}
       {:ok, offsets} when is_list(offsets) ->
 	blocks = for offset <- offsets do
-	    read_block_with_cache(log, offset) |> Block.decode(encoded_block)
-	    {:ok, {encoded_block, _}} = BlockchainLog.read_block(log, offset)
-	    Block.decode(encoded_block)
+	    read_block_with_cache(log, offset) |> Block.decode
 	  end
 	{:ok, blocks}
       {:ok, offset} ->
-	block = read_block_with_cache(log, offset) |> Block.decode(encoded_block)
+	block = read_block_with_cache(log, offset) |> Block.decode
 	{:ok, block}
     end
   end

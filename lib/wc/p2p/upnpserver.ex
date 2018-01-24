@@ -13,32 +13,32 @@ defmodule WC.P2P.UPnPServer do
 
   def handle_info(:timeout, state = %{context: context, internal_port: internal_port, external_port: external_port, timeout: timeout}) do
     Logger.info "Renewing UPnP lease..."
-    :nat.add_port_mapping(context, :tcp, external_port, internal_port, nat_description(), timeout)
+    :nat.add_port_mapping(context, :tcp, internal_port, external_port, timeout)
     {:noreply, state, div(timeout * 1000, 2)}
   end
 
   def get_ip(internal_port, external_port) do
     if Application.get_env(:wc, :enable_nat) do
+      # TODO: An error monad would really clean this up
       case :nat.discover do
 	{:ok, context} ->
-	  case :nat.add_port_mapping(context, :tcp, external_port, internal_port, nat_description(), 1) do
+	  case :nat.add_port_mapping(context, :tcp, internal_port, external_port, 1) do
 	    :ok ->
 	      case :nat.get_external_address(context) do
 		{:ok, ip_address} ->
 		  {:ok, ip_address, context}
 		error ->
 		  error
+	      end
 	    error ->
 	      error
 	  end
+	error ->
+	  error
       end
     else
       {:error, :nat_disabled}
     end
   end
 
-  def nat_description do
-    :erlang.binary_to_list("WhipCash" <> WC.version)
-  end
-  
 end
