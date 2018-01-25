@@ -11,7 +11,7 @@ alias WC.Miner.MinerServer, as: MinerServer
 defmodule WC.Blockchain.LogServer do
   use GenServer
 
-  @initial_state %{tip: nil, index_complete: false, log: nil}
+  @initial_state %{tip: nil, index_complete: false, log: nil, chain_index: nil}
 
   def start_link do
     GenServer.start_link(__MODULE__, [], name: __MODULE__)
@@ -23,8 +23,9 @@ defmodule WC.Blockchain.LogServer do
       Logger.info "Inserting genesis block..."
       BlockchainLog.append_block(log, Block.encode(WC.genesis_block))
     end
+    chain_index = :ets.new(:chain_index, [:set, :protected])    
     spawn_link index_blocks(self())
-    {:ok, %{@initial_state | log: log}}
+    {:ok, %{@initial_state | log: log, chain_index: chain_index}}
   end
 
   @spec get_block_by_hash(BlockHeader.block_hash) :: {:ok, Block.t} | {:error, :notfound}
@@ -83,31 +84,45 @@ defmodule WC.Blockchain.LogServer do
     end
   end
 
-  @spec get_next_blocks_in_chain(non_neg_integer, Block.t) :: list(Block.t)
-  def get_next_blocks_in_chain(number_of_blocks, block) do
-    Enum.take(find_block_in_chain(block), -number_of_blocks)
-  end
+  # @spec get_next_blocks_in_chain(non_neg_integer, Block.t) :: list(Block.t)
+  # def get_next_blocks_in_chain(number_of_blocks, block) do
+  #   Enum.take(find_block_in_chain(block), -number_of_blocks)
+  # end
   
-  @spec find_block_in_chain(Block.t) :: list
-  def find_block_in_chain(block) do
-    tip = get_tip()
-    find_block_in_chain(block, [tip.prev_block_hash|Block.hash(tip)])
-  end
+  # @spec find_block_in_chain(Block.t) :: list
+  # def find_block_in_chain(block) do
+  #   tip = get_tip()
+  #   find_block_in_chain(block, [tip.prev_block_hash|Block.hash(tip)])
+  # end
 
-  # TODO: should limit this, we don't want to accept really old blocks
-  # anyway, and it will _hammer_ the cache
-  def find_block_in_chain(block, [prev_block_hash|hashes] = acc) do
-    case get_block_by_hash(prev_block_hash) do
-      {:ok, prev_block} ->
-	if prev_block == block do
-	  acc
-	else
-	  find_block_in_chain(block, [prev_block.prev_block_hash|hashes])
-	end
-      _error ->
-	{:error, :notfound}
-    end
-  end
+  # # TODO: should limit this, we don't want to accept really old blocks
+  # # anyway, and it will _hammer_ the cache
+  # def find_block_in_chain(block, [prev_block_hash|hashes] = acc) do
+  #   case get_block_by_hash(prev_block_hash) do
+  #     {:ok, prev_block} ->
+  # 	if prev_block == block do
+  # 	  acc
+  # 	else
+  # 	  find_block_in_chain(block, [prev_block.prev_block_hash|hashes])
+  # 	end
+  #     _error ->
+  # 	{:error, :notfound}
+  #   end
+  # end
+
+  # @spec find_first_known_block_hash(list(Block.block_hash)) :: {:ok, Block.t} | {:error, :notfound}
+  # def find_first_known_block_hash([]) do
+  #   {:error, :notfound}
+  # end
+  
+  # def find_first_known_block_hash([block_hash|block_locator]) do
+  #   case LogServer.get_block_by_hash(block_hash) do
+  #     {:ok, block} ->
+  # 	{:ok, block}
+  #     {:error, :notfound} ->
+  # 	find_first_known_block_hash(block_locator)
+  #   end
+  # end
   
   def get_prev_blocks(number_of_blocks) do
     {:ok, tip} = get_tip()
@@ -154,6 +169,27 @@ defmodule WC.Blockchain.LogServer do
     {:noreply, %{state | tip: new_tip}}
   end
 
+  def handle_cast({:update_chain_index, old_tip, new_tip}, state = %{chain_index: chain_index, log: log}) do
+    if new_tip.header.height > old_tip.header.height do
+      case find_first_parent_in_chain(log, chain_index, new_tip) do
+	{:ok, block} ->
+	  case find_block_range(log, new_tip, block) do
+	    {:ok, invalid_hashes} ->
+	      {:ok, new_hashes} = find_block_range(log, old_tip, block)
+	      for hash <- new_hashes, do: true = :ets.insert_new(chain_index, hash)
+	      for hash <- invalid_hashes, do: true = :ets.delete(chain_index, hash)
+	    error ->
+	      error
+	  end
+	error ->
+	  error
+      end
+      {:noreply, %{state | tip: new_tip}}
+    else
+      {:noreply, state}
+    end
+  end
+  
   def handle_info({:index_complete, tip}, state) do
     Logger.info "Indexing complete, tip = #{inspect(tip)}"
     MinerServer.new_block(tip)
@@ -167,6 +203,39 @@ defmodule WC.Blockchain.LogServer do
       Logger.info "Indexing blocks..."
       tip = BlockchainLog.index_blocks(log)
       send pid, {:index_complete, tip}
+    end
+  end
+
+  def find_first_parent_in_chain(log, chain_index, block = %Block{prev_block_hash: prev_block_hash}) do
+    case get_block_with_index(log, BlockHashIndex, prev_block_hash) do
+      {:ok, prev_block} ->
+	case :ets.member(chain_index, prev_block_hash) do
+	  false ->
+	    find_first_parent_in_chain(log, chain_index, prev_block)
+	  true ->
+	    {:ok, prev_block}
+	end
+      error ->
+	error
+    end
+  end
+
+  def find_block_range(log, starting_block, ending_block) do
+    find_block_range(log, starting_block, ending_block, [])
+  end
+  
+  def find_block_range(log, starting_block, ending_block, acc) do
+    prev_block_hash = starting_block.prev_block_hash
+    case get_block_with_index(log, BlockHashIndex, prev_block_hash) do
+      {:ok, prev_block} ->
+	case prev_block == ending_block do
+	  false ->
+	    find_block_range(log, prev_block, ending_block, [prev_block_hash|acc])
+	  true ->
+	    {:ok, [prev_block_hash|acc]}
+	end
+      error ->
+	error
     end
   end
 
@@ -195,5 +264,5 @@ defmodule WC.Blockchain.LogServer do
 	encoded_block
     end
   end
-  
+
 end
