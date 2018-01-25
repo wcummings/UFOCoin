@@ -68,22 +68,4 @@ defmodule WC.Blockchain.Log do
     index_blocks(log, 0, WC.genesis_block)
   end
   
-  def index_blocks(log, offset, tip) do
-    case read_block(log, offset) do
-      {:ok, {encoded_block, next_offset}} ->
-	block_hash = Block.hash(encoded_block)
-	Logger.info "Indexing... #{Base.encode16(block_hash)}"
-	:ok = BlockHashIndex.insert(block_hash, offset)
-	block = Block.decode(encoded_block)
-	new_tip = if block.header.height > tip.header.height do
-	  block
-	else
-	  tip
-	end
-	index_blocks(log, next_offset, new_tip)
-      {:error, :eof} ->
-	tip
-    end
-  end
-  
 end

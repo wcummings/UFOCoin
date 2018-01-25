@@ -13,6 +13,10 @@ defmodule WC.Blockchain.LogServer do
 
   @initial_state %{tip: nil, index_complete: false, log: nil, chain_index: nil}
 
+  #
+  # PUBLIC
+  #
+  
   def start_link do
     GenServer.start_link(__MODULE__, [], name: __MODULE__)
   end
@@ -53,7 +57,13 @@ defmodule WC.Blockchain.LogServer do
     GenServer.cast(__MODULE__, {:update, block})
   end
 
-  # Build a list of block hashes from newest to genesis, dense to start, then sparse
+  # TODO: maybe refactor this call into its own GenServer?
+  @spec update_index(Block.t, Block.t) :: :ok
+  def update_index(old_tip, new_tip) do
+    GenServer.cast(__MODULE__, {:update_chain_index, old_tip, new_tip})
+  end
+
+  @doc "Build a list of block hashes from newest to genesis, dense to start, then sparse"
   @spec get_block_locator() :: list(InvItem.t)
   def get_block_locator do
     {:ok, tip} = get_tip()
@@ -142,6 +152,10 @@ defmodule WC.Blockchain.LogServer do
     end
   end
 
+  #
+  # GENSERVER CALLBACKS
+  #
+
   def handle_call(_, _, state = %{index_complete: false}) do
     {:reply, {:error, :index_incomplete}, state}
   end
@@ -161,6 +175,7 @@ defmodule WC.Blockchain.LogServer do
     :ok = BlockHashIndex.insert(block_hash, offset)
     :ok = PrevBlockHashIndex.insert(block.header.prev_block_hash, offset)
     new_tip = if block.header.height > tip.header.height do
+      ^block = update_chain_index(log, chain_index, tip, block)
       MinerServer.new_block(block)
       block      
     else
@@ -169,25 +184,9 @@ defmodule WC.Blockchain.LogServer do
     {:noreply, %{state | tip: new_tip}}
   end
 
-  def handle_cast({:update_chain_index, old_tip, new_tip}, state = %{chain_index: chain_index, log: log}) do
-    if new_tip.header.height > old_tip.header.height do
-      case find_first_parent_in_chain(log, chain_index, new_tip) do
-	{:ok, block} ->
-	  case find_block_range(log, new_tip, block) do
-	    {:ok, invalid_hashes} ->
-	      {:ok, new_hashes} = find_block_range(log, old_tip, block)
-	      for hash <- new_hashes, do: true = :ets.insert_new(chain_index, hash)
-	      for hash <- invalid_hashes, do: true = :ets.delete(chain_index, hash)
-	    error ->
-	      error
-	  end
-	error ->
-	  error
-      end
-      {:noreply, %{state | tip: new_tip}}
-    else
-      {:noreply, state}
-    end
+  def handle_cast({:update_index, old_tip, new_tip}, state = %{chain_index: chain_index, log: log}) do
+    tip = update_chain_index(log, chain_index, old_tip, new_tip)
+    {:noreply, %{state | tip: tip}}
   end
   
   def handle_info({:index_complete, tip}, state) do
@@ -196,16 +195,10 @@ defmodule WC.Blockchain.LogServer do
     {:noreply, %{state | tip: tip, index_complete: true}}
   end
 
-  def index_blocks(pid) do
-    fn ->
-      # Can't share file handles across processes
-      {:ok, log} = BlockchainLog.init
-      Logger.info "Indexing blocks..."
-      tip = BlockchainLog.index_blocks(log)
-      send pid, {:index_complete, tip}
-    end
-  end
-
+  #
+  # PRIVATE
+  #
+  
   def find_first_parent_in_chain(log, chain_index, block = %Block{prev_block_hash: prev_block_hash}) do
     case get_block_with_index(log, BlockHashIndex, prev_block_hash) do
       {:ok, prev_block} ->
@@ -265,4 +258,54 @@ defmodule WC.Blockchain.LogServer do
     end
   end
 
+  def index_blocks(pid) do
+    fn ->
+      # Can't share file handles across processes
+      {:ok, log} = BlockchainLog.init
+      Logger.info "Indexing blocks..."
+      tip = BlockchainLog.index_blocks(log)
+      send pid, {:index_complete, tip}
+    end
+  end
+  
+  def index_blocks(log, offset, tip) do
+    case BlockchainLog.read_block(log, offset) do
+      {:ok, {encoded_block, next_offset}} ->
+	block_hash = Block.hash(encoded_block)
+	Logger.info "Indexing... #{Base.encode16(block_hash)}"
+	:ok = BlockHashIndex.insert(block_hash, offset)
+	block = Block.decode(encoded_block)
+	update_index(tip, new_tip)
+	new_tip = if block.header.height > tip.header.height do
+	  block
+	else
+	  tip
+	end
+	index_blocks(log, next_offset, new_tip)
+      {:error, :eof} ->
+	tip
+    end
+  end
+
+  def update_chain_index(log, chain_index, old_tip, new_tip) do
+    if new_tip.header.height > old_tip.header.height do
+      case find_first_parent_in_chain(log, chain_index, new_tip) do
+	{:ok, block} ->
+	  case find_block_range(log, new_tip, block) do
+	    {:ok, invalid_hashes} ->
+	      {:ok, new_hashes} = find_block_range(log, old_tip, block)
+	      for hash <- new_hashes, do: true = :ets.insert_new(chain_index, hash)
+	      for hash <- invalid_hashes, do: true = :ets.delete(chain_index, hash)
+	    error ->
+	      error
+	  end
+	error ->
+	  error
+      end
+      new_tip
+    else
+      old_tip
+    end
+  end
+  
 end
