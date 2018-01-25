@@ -63,9 +63,4 @@ defmodule WC.Blockchain.Log do
     :binary.decode_unsigned(length)
   end
 
-  @spec index_blocks(WC.Blockchain.Log.t) :: Block.t
-  def index_blocks(log) do
-    index_blocks(log, 0, WC.genesis_block)
-  end
-  
 end

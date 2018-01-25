@@ -168,7 +168,7 @@ defmodule WC.Blockchain.LogServer do
     {:reply, {:ok, tip}, state}
   end
 
-  def handle_cast({:update, encoded_block}, state = %{tip: tip, log: log}) do
+  def handle_cast({:update, encoded_block}, state = %{tip: tip, log: log, chain_index: chain_index}) do
     block = Block.decode(encoded_block)
     block_hash = Block.hash(encoded_block)
     offset = BlockchainLog.append_block(log, encoded_block)    
@@ -199,7 +199,8 @@ defmodule WC.Blockchain.LogServer do
   # PRIVATE
   #
   
-  def find_first_parent_in_chain(log, chain_index, block = %Block{prev_block_hash: prev_block_hash}) do
+  def find_first_parent_in_chain(log, chain_index, block) do
+    prev_block_hash = block.header.prev_block_hash    
     case get_block_with_index(log, BlockHashIndex, prev_block_hash) do
       {:ok, prev_block} ->
 	case :ets.member(chain_index, prev_block_hash) do
@@ -218,7 +219,7 @@ defmodule WC.Blockchain.LogServer do
   end
   
   def find_block_range(log, starting_block, ending_block, acc) do
-    prev_block_hash = starting_block.prev_block_hash
+    prev_block_hash = starting_block.header.prev_block_hash
     case get_block_with_index(log, BlockHashIndex, prev_block_hash) do
       {:ok, prev_block} ->
 	case prev_block == ending_block do
@@ -263,7 +264,7 @@ defmodule WC.Blockchain.LogServer do
       # Can't share file handles across processes
       {:ok, log} = BlockchainLog.init
       Logger.info "Indexing blocks..."
-      tip = BlockchainLog.index_blocks(log)
+      tip = index_blocks(log)
       send pid, {:index_complete, tip}
     end
   end
@@ -275,8 +276,9 @@ defmodule WC.Blockchain.LogServer do
 	Logger.info "Indexing... #{Base.encode16(block_hash)}"
 	:ok = BlockHashIndex.insert(block_hash, offset)
 	block = Block.decode(encoded_block)
-	update_index(tip, new_tip)
 	new_tip = if block.header.height > tip.header.height do
+	  # TODO: fix redundant conditionals around update_index
+	  {:ok, ^block} = update_index(tip, block)
 	  block
 	else
 	  tip
