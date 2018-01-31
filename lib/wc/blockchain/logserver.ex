@@ -94,45 +94,49 @@ defmodule WC.Blockchain.LogServer do
     end
   end
 
-  # @spec get_next_blocks_in_chain(non_neg_integer, Block.t) :: list(Block.t)
-  # def get_next_blocks_in_chain(number_of_blocks, block) do
-  #   Enum.take(find_block_in_chain(block), -number_of_blocks)
-  # end
+  @spec get_next_block_hashes_in_chain(non_neg_integer, Block.block_hash) :: list(Block.block_hash)
+  def get_next_block_hashes_in_chain(number_of_blocks, starting_block_hash) do
+    get_next_block_hashes_in_chain(number_of_blocks, starting_block_hash, [])
+  end
   
-  # @spec find_block_in_chain(Block.t) :: list
-  # def find_block_in_chain(block) do
-  #   tip = get_tip()
-  #   find_block_in_chain(block, [tip.prev_block_hash|Block.hash(tip)])
-  # end
-
-  # # TODO: should limit this, we don't want to accept really old blocks
-  # # anyway, and it will _hammer_ the cache
-  # def find_block_in_chain(block, [prev_block_hash|hashes] = acc) do
-  #   case get_block_by_hash(prev_block_hash) do
-  #     {:ok, prev_block} ->
-  # 	if prev_block == block do
-  # 	  acc
-  # 	else
-  # 	  find_block_in_chain(block, [prev_block.prev_block_hash|hashes])
-  # 	end
-  #     _error ->
-  # 	{:error, :notfound}
-  #   end
-  # end
-
-  # @spec find_first_known_block_hash(list(Block.block_hash)) :: {:ok, Block.t} | {:error, :notfound}
-  # def find_first_known_block_hash([]) do
-  #   {:error, :notfound}
-  # end
+  def get_next_block_hashes_in_chain(0, _, acc) do
+    acc
+  end
   
-  # def find_first_known_block_hash([block_hash|block_locator]) do
-  #   case LogServer.get_block_by_hash(block_hash) do
-  #     {:ok, block} ->
-  # 	{:ok, block}
-  #     {:error, :notfound} ->
-  # 	find_first_known_block_hash(block_locator)
-  #   end
-  # end
+  def get_next_block_hashes_in_chain(number_of_blocks, starting_block_hash, acc) do
+    case get_blocks_by_prev_hash(starting_block_hash) do
+      {:ok, blocks} ->
+	case Enum.filter(blocks, fn block -> is_in_main_chain(Block.hash(block)) end) do
+	  [] ->
+	    acc
+	  [next_block] ->
+	    next_block_hash = Block.hash(next_block)
+	      get_next_block_hashes_in_chain(number_of_blocks - 1, next_block_hash, [next_block_hash|acc])
+	end
+      {:error, :notfound} ->
+	acc
+    end
+  end
+
+  @spec is_in_main_chain(Block.block_hash) :: true | false
+  def is_in_main_chain(block_hash) do
+    {:ok, rv} = GenServer.call(__MODULE__, {:is_in_main_chain, block_hash})
+    rv
+  end
+
+  @spec find_first_block_hash_in_chain(list(Block.block_hash)) :: {:ok, Block.t} | {:error, :notfound}
+  def find_first_block_hash_in_chain([]) do
+    {:error, :notfound}
+  end
+  
+  def find_first_block_in_chain(block_hashes) do
+    case Enum.find(block_hashes, &is_in_main_chain/1) do
+      nil ->
+	{:error, :notfound}
+      block_hash ->
+	block_hash
+    end
+  end
   
   def get_prev_blocks(number_of_blocks) do
     {:ok, tip} = get_tip()
@@ -168,6 +172,10 @@ defmodule WC.Blockchain.LogServer do
     {:reply, {:ok, tip}, state}
   end
 
+  def handle_call({:is_in_main_chain, block_hash}, _from, state = %{chain_index: chain_index}) do
+    {:reply, is_in_main_chain(chain_index, block_hash), state}
+  end
+  
   def handle_cast({:update, encoded_block}, state = %{tip: tip, log: log, chain_index: chain_index}) do
     block = Block.decode(encoded_block)
     block_hash = Block.hash(encoded_block)
@@ -198,12 +206,16 @@ defmodule WC.Blockchain.LogServer do
   #
   # PRIVATE
   #
+
+  def is_in_main_chain(chain_index, block_hash) do
+    :ets.member(chain_index, block_hash)
+  end
   
   def find_first_parent_in_chain(log, chain_index, block) do
     prev_block_hash = block.header.prev_block_hash    
     case get_block_with_index(log, BlockHashIndex, prev_block_hash) do
       {:ok, prev_block} ->
-	case :ets.member(chain_index, prev_block_hash) do
+	case is_in_main_chain(chain_index, prev_block_hash) do
 	  false ->
 	    find_first_parent_in_chain(log, chain_index, prev_block)
 	  true ->
@@ -250,7 +262,7 @@ defmodule WC.Blockchain.LogServer do
 
   def read_block_with_cache(log, offset) do
     case Cachex.get(:block_cache, offset) do
-      {:error, :no_cache} ->
+      {:missing, nil} ->
 	{:ok, {encoded_block, _}} = BlockchainLog.read_block(log, offset)
 	{:ok, true} = Cachex.set(:block_cache, offset, encoded_block)
 	encoded_block
@@ -264,7 +276,7 @@ defmodule WC.Blockchain.LogServer do
       # Can't share file handles across processes
       {:ok, log} = BlockchainLog.init
       Logger.info "Indexing blocks..."
-      tip = index_blocks(log)
+      tip = index_blocks(log, 0, WC.genesis_block)
       send pid, {:index_complete, tip}
     end
   end

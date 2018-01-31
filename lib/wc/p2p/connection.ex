@@ -5,6 +5,7 @@ alias WC.P2P.Packet, as: P2PPacket
 alias WC.P2P.AddrTable, as: P2PAddrTable
 alias WC.P2P.PingFSM, as: P2PPingFSM
 alias WC.P2P.PingFSMSupervisor, as: P2PPingFSMSupervisor
+alias WC.Blockchain.LogServer, as: LogServer
 
 defmodule WC.P2P.Connection do
   use GenServer
@@ -119,6 +120,11 @@ defmodule WC.P2P.Connection do
   
   def handle_packet(%P2PPacket{proc: :pong}, state = %{pingfsm: pingfsm}) do
     P2PPingFSM.pong(pingfsm)
+    state
+  end
+
+  def handle_packet(%P2PPacket{proc: :getblocks, extra_data: block_locator}, state) do
+    # TODO
     state
   end
   
