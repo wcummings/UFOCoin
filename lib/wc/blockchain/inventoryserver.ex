@@ -19,6 +19,7 @@ defmodule WC.Blockchain.InventoryServer do
   end
 
   def init([]) do
+    Process.send_after(self(), :getblocks_timer, 60 * 1000)    
     {:ok, %{}}
   end
 
@@ -27,15 +28,24 @@ defmodule WC.Blockchain.InventoryServer do
   end
 
   def handle_cast(:getblocks, state) do
-    # Check that we don't spam the network during the initial indexing
-    if LogServer.index_complete? do
-      block_locator = get_block_locator()
-      Logger.info "Sending getblocks #{inspect(block_locator)}"
-      :ok = P2PConnection.broadcast(%P2PPacket{proc: :getblocks, extra_data: block_locator})
-    end
+    send_getblocks()
     {:noreply, state}
   end
 
+  def handle_info(:getblocks_timer, state) do
+    send_getblocks()
+    Process.send_after(self(), :getblocks_timer, 60 * 1000)
+    {:noreply, state}
+  end
+
+  def send_getblocks do
+    # Check that we don't spam the network during the initial indexing    
+    if LogServer.index_complete? do
+      Logger.info "Sending getblocks"      
+      :ok = P2PConnection.broadcast(%P2PPacket{proc: :getblocks, extra_data: get_block_locator()})
+    end
+  end
+  
   @doc "Build a list of block hashes from newest to genesis, dense to start, then sparse"
   @spec get_block_locator() :: list(Block.block_hash)
   def get_block_locator do

@@ -125,14 +125,17 @@ defmodule WC.P2P.Connection do
   end
 
   def handle_packet(%P2PPacket{proc: :getblocks, extra_data: block_locator}, state = %{socket: socket}) do
+    Logger.info "getblocks received"
     case LogServer.find_first_block_hash_in_chain(block_locator) do
       {:error, :notfound} ->
+	Logger.error "No block found in block locator"
 	# TODO: do we tell the node we can't find it?
   	:ok
       {:ok, block_hash} ->
 	# TODO: use constant instead of 500
 	case LogServer.get_next_block_hashes_in_chain(500, block_hash) do
 	  [] ->
+	    Logger.info "Chain up to date, no invitems to send"
 	    # Do nothing
 	    nil
 	  block_hashes ->

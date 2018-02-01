@@ -79,7 +79,7 @@ defmodule WC.Blockchain.LogServer do
 	    acc
 	  [next_block] ->
 	    next_block_hash = Block.hash(next_block)
-	      get_next_block_hashes_in_chain(number_of_blocks - 1, next_block_hash, [next_block_hash|acc])
+	    get_next_block_hashes_in_chain(number_of_blocks - 1, next_block_hash, [next_block_hash|acc])
 	end
       {:error, :notfound} ->
 	acc
@@ -163,8 +163,8 @@ defmodule WC.Blockchain.LogServer do
     :ok = BlockHashIndex.insert(block_hash, offset)
     :ok = PrevBlockHashIndex.insert(block.header.prev_block_hash, offset)
     new_tip = if block.header.height > tip.header.height do
-      {:ok, ^block} = update_chain_index(log, chain_index, tip, block)
-      MinerServer.new_block(block)
+      {:ok, ^block} = update_chain_index(log, chain_index, tip, block, false)
+      :ok = MinerServer.new_block(block)
       block
     else
       tip
@@ -179,9 +179,9 @@ defmodule WC.Blockchain.LogServer do
   
   def handle_info({:index_complete, tip}, state) do
     Logger.info "Indexing complete, tip = #{inspect(tip)}"
-    MinerServer.new_block(tip)
     # This might happen automagically
     :ok = InventoryServer.getblocks()
+    :ok = MinerServer.new_block(tip)
     {:noreply, %{state | tip: tip, index_complete: true}}
   end
 
@@ -285,6 +285,10 @@ defmodule WC.Blockchain.LogServer do
 
   @doc "Handle chain reorgs"
   def update_chain_index(log, chain_index, old_tip, new_tip) do
+    update_chain_index(log, chain_index, old_tip, new_tip, true)
+  end
+  
+  def update_chain_index(log, chain_index, old_tip, new_tip, getblocks) do
     if new_tip.header.height > old_tip.header.height do
       case find_first_parent_in_chain(log, chain_index, new_tip) do
 	{:ok, block} ->
@@ -304,7 +308,9 @@ defmodule WC.Blockchain.LogServer do
       # listen for reorgs and do stuff like getblocks
       # i.e. every connection process could listen,
       # as well as MinerServer
-      :ok = InventoryServer.getblocks()
+      if getblocks do
+	:ok = InventoryServer.getblocks()
+      end
       
       {:ok, new_tip}
     else
