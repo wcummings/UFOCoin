@@ -48,7 +48,7 @@ defmodule WC.P2P.Handshake do
 
   def handle_info(:timeout, state), do: {:noreply, state}
 
-  def handle_packet(%P2PPacket{proc: :version, extra_data: version_string}, state = %{socket: socket}) do
+  def handle_packet(%P2PPacket{proc: :version, extra_data: version_string}, state = %{socket: socket, connected: false}) do
     request = %P2PPacket{proc: :version, extra_data: WC.version}
     payload = P2PPacket.encode(request)
     :ok = :gen_tcp.send(socket, payload)
