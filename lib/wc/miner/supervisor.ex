@@ -7,8 +7,8 @@ defmodule WC.Miner.Supervisor do
 
   def init([]) do
     children = [
-      worker(WC.Miner.MinerServer, []),
-      supervisor(WC.Miner.WorkerSupervisor, [])
+      supervisor(WC.Miner.WorkerSupervisor, []),
+      worker(WC.Miner.MinerServer, [])
     ]
 
     Supervisor.init(children, strategy: :one_for_all)

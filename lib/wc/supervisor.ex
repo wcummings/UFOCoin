@@ -8,8 +8,8 @@ defmodule WC.Supervisor do
   def init([]) do
     children = [
       worker(WC.Blockchain.LogServer, []),
-      supervisor(WC.P2P.Supervisor, []),
       supervisor(WC.Miner.Supervisor, []),
+      supervisor(WC.P2P.Supervisor, []),
       worker(WC.Blockchain.BlockValidatorServer, []),
       worker(Cachex, [:block_cache, [limit: 500]]),
       worker(WC.Blockchain.InventoryServer, [])
