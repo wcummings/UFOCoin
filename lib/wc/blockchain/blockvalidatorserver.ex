@@ -4,6 +4,7 @@ alias WC.Blockchain.Block, as: Block
 alias WC.Blockchain.BlockHeader, as: BlockHeader
 alias WC.Blockchain.LogServer, as: LogServer
 alias WC.Blockchain.OrphanBlockTable, as: OrphanBlockTable
+alias WC.Blockchain.InventoryServer, as: InventoryServer
 
 defmodule WC.Blockchain.BlockValidatorServer do
   use GenServer
@@ -40,7 +41,8 @@ defmodule WC.Blockchain.BlockValidatorServer do
 	    {:reply, :ok, state}
 	  {:error, :orphan} ->
 	    # See Block.validate/1 in block.ex for details.
-	    OrphanBlockTable.insert(block)
+	    :ok = OrphanBlockTable.insert(block)
+	    :ok = InventoryServer.getblocks()
 	    {:reply, {:error, :orphan}, state}
 	  {:error, error} ->
 	    {:reply, {:error, error}, state}

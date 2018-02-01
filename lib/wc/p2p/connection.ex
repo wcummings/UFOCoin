@@ -1,6 +1,7 @@
 require Logger
 
 alias WC.Blockchain.BlockValidatorServer, as: BlockValidatorServer
+alias WC.Blockchain.InvItem, as: InvItem
 alias WC.P2P.Packet, as: P2PPacket
 alias WC.P2P.AddrTable, as: P2PAddrTable
 alias WC.P2P.PingFSM, as: P2PPingFSM
@@ -46,7 +47,7 @@ defmodule WC.P2P.Connection do
       |> Enum.each(fn {pid, _} -> send_packet(pid, packet) end)
     end)
   end
-  
+
   def init([socket]) do
     :ok = :inet.setopts(socket, [{:active, :once}]) # Re-set {:active, :once}    
     {:ok, _} = Registry.register(:connection_registry, "connection", [])
@@ -123,8 +124,30 @@ defmodule WC.P2P.Connection do
     state
   end
 
-  def handle_packet(%P2PPacket{proc: :getblocks, extra_data: block_locator}, state) do
-    # TODO
+  def handle_packet(%P2PPacket{proc: :getblocks, extra_data: block_locator}, state = %{socket: socket}) do
+    case LogServer.find_first_block_hash_in_chain(block_locator) do
+      {:error, :notfound} ->
+	# TODO: do we tell the node we can't find it?
+  	:ok
+      {:ok, block_hash} ->
+	# TODO: use constant instead of 500
+	case LogServer.get_next_block_hashes_in_chain(500, block_hash) do
+	  [] ->
+	    # Do nothing
+	    nil
+	  block_hashes ->
+	    # Send inventory
+	    invitems = Enum.map(block_hashes, &InvItem.from_block_hash/1)
+	    packet = %P2PPacket{proc: :inv, extra_data: invitems}
+	    Logger.info "Sending invitems: #{inspect(invitems)}"
+	    send_packet(socket, packet)
+	end
+    end
+    state
+  end
+
+  def handle_packet(%P2PPacket{proc: :inv, extra_data: invitems}, state) do
+    Logger.info "Got inv items: #{inspect(invitems)}"
     state
   end
   

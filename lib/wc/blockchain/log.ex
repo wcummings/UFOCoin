@@ -1,8 +1,5 @@
 require Logger
 
-alias WC.Blockchain.Block, as: Block
-alias WC.Blockchain.BlockHashIndex, as: BlockHashIndex
-
 defmodule WC.Blockchain.Log do
   @enforce_keys [:file, :path]
   defstruct [:file, :path]

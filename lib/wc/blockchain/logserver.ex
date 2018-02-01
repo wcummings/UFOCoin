@@ -5,7 +5,7 @@ alias WC.Blockchain.PrevBlockHashIndex, as: PrevBlockHashIndex
 alias WC.Blockchain.BlockHeader, as: BlockHeader
 alias WC.Blockchain.Block, as: Block
 alias WC.Blockchain.Log, as: BlockchainLog
-alias WC.Blockchain.InvItem, as: InvItem
+alias WC.Blockchain.InventoryServer, as: InventoryServer
 alias WC.Miner.MinerServer, as: MinerServer
 
 defmodule WC.Blockchain.LogServer do
@@ -57,41 +57,9 @@ defmodule WC.Blockchain.LogServer do
     GenServer.cast(__MODULE__, {:update, block})
   end
 
-  # TODO: maybe refactor this call into its own GenServer?
   @spec update_index(Block.t, Block.t) :: :ok
   def update_index(old_tip, new_tip) do
     GenServer.cast(__MODULE__, {:update_chain_index, old_tip, new_tip})
-  end
-
-  @doc "Build a list of block hashes from newest to genesis, dense to start, then sparse"
-  @spec get_block_locator() :: list(InvItem.t)
-  def get_block_locator do
-    {:ok, tip} = get_tip()
-    genesis_block_hash = Block.hash(WC.genesis_block)
-    dense_hashes = for block <- get_prev_blocks(10, tip), do: Block.hash(block)
-    if tip.header.height < 10 do
-      dense_hashes ++ [genesis_block_hash]
-    else
-      dense_hashes ++ get_prev_block_hashes_sparse(tip) ++ [genesis_block_hash]
-    end
-    |> Enum.map(fn block_hash -> %InvItem{type: :block, hash: block_hash} end)
-  end
-
-  def get_prev_block_hashes_sparse(tip) do
-    get_prev_block_hashes_sparse(tip, 1, 0, [])
-  end
-  
-  def get_prev_block_hashes_sparse(tip, step, count, acc) do
-    {:ok, block} = get_block_by_hash(tip.header.prev_block_hash)
-    if block.header.height == 0 do
-      acc
-    else
-      if count == step do
-	get_prev_block_hashes_sparse(block, step * 2, 0, [Block.hash(block)|acc])
-      else
-	get_prev_block_hashes_sparse(block, step, count + 1, acc)
-      end
-    end
   end
 
   @spec get_next_block_hashes_in_chain(non_neg_integer, Block.block_hash) :: list(Block.block_hash)
@@ -156,6 +124,11 @@ defmodule WC.Blockchain.LogServer do
     end
   end
 
+  @spec index_complete? :: true | false
+  def index_complete? do
+    GenServer.call(__MODULE__, :index_complete)
+  end
+
   #
   # GENSERVER CALLBACKS
   #
@@ -175,6 +148,10 @@ defmodule WC.Blockchain.LogServer do
   def handle_call({:is_in_main_chain, block_hash}, _from, state = %{chain_index: chain_index}) do
     {:reply, is_in_main_chain(chain_index, block_hash), state}
   end
+
+  def handle_call(:index_complete, _from, state = %{index_complete: index_complete}) do
+    {:reply, index_complete, state}
+  end
   
   def handle_cast({:update, encoded_block}, state = %{tip: tip, log: log, chain_index: chain_index}) do
     block = Block.decode(encoded_block)
@@ -183,9 +160,9 @@ defmodule WC.Blockchain.LogServer do
     :ok = BlockHashIndex.insert(block_hash, offset)
     :ok = PrevBlockHashIndex.insert(block.header.prev_block_hash, offset)
     new_tip = if block.header.height > tip.header.height do
-      ^block = update_chain_index(log, chain_index, tip, block)
+      {:ok, ^block} = update_chain_index(log, chain_index, tip, block)
       MinerServer.new_block(block)
-      block      
+      block
     else
       tip
     end
@@ -193,13 +170,15 @@ defmodule WC.Blockchain.LogServer do
   end
 
   def handle_cast({:update_index, old_tip, new_tip}, state = %{chain_index: chain_index, log: log}) do
-    tip = update_chain_index(log, chain_index, old_tip, new_tip)
+    {:ok, tip} = update_chain_index(log, chain_index, old_tip, new_tip)
     {:noreply, %{state | tip: tip}}
   end
   
   def handle_info({:index_complete, tip}, state) do
     Logger.info "Indexing complete, tip = #{inspect(tip)}"
     MinerServer.new_block(tip)
+    # This might happen automagically
+    :ok = InventoryServer.getblocks()
     {:noreply, %{state | tip: tip, index_complete: true}}
   end
 
@@ -301,6 +280,7 @@ defmodule WC.Blockchain.LogServer do
     end
   end
 
+  @doc "Handle chain reorgs"
   def update_chain_index(log, chain_index, old_tip, new_tip) do
     if new_tip.header.height > old_tip.header.height do
       case find_first_parent_in_chain(log, chain_index, new_tip) do
@@ -310,15 +290,20 @@ defmodule WC.Blockchain.LogServer do
 	      {:ok, new_hashes} = find_block_range(log, old_tip, block)
 	      for hash <- new_hashes, do: true = :ets.insert_new(chain_index, hash)
 	      for hash <- invalid_hashes, do: true = :ets.delete(chain_index, hash)
+	      # TODO: maybe eventually use pub/sub to let other procs
+	      # listen for reorgs and do stuff like getblocks
+	      # i.e. every connection process could listen,
+	      # as well as MinerServer
+	      :ok = InventoryServer.getblocks()
 	    error ->
 	      error
 	  end
 	error ->
 	  error
       end
-      new_tip
+      {:ok, new_tip}
     else
-      old_tip
+      {:ok, old_tip}
     end
   end
   
