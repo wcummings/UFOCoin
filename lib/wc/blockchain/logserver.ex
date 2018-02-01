@@ -88,8 +88,7 @@ defmodule WC.Blockchain.LogServer do
 
   @spec is_in_main_chain(Block.block_hash) :: true | false
   def is_in_main_chain(block_hash) do
-    {:ok, rv} = GenServer.call(__MODULE__, {:is_in_main_chain, block_hash})
-    rv
+    GenServer.call(__MODULE__, {:is_in_main_chain, block_hash})
   end
 
   @spec find_first_block_hash_in_chain(list(Block.block_hash)) :: {:ok, Block.t} | {:error, :notfound}
@@ -97,7 +96,7 @@ defmodule WC.Blockchain.LogServer do
     {:error, :notfound}
   end
   
-  def find_first_block_in_chain(block_hashes) do
+  def find_first_block_hash_in_chain(block_hashes) do
     case Enum.find(block_hashes, &is_in_main_chain/1) do
       nil ->
 	{:error, :notfound}

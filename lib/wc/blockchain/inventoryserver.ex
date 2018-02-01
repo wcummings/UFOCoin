@@ -14,8 +14,8 @@ alias WC.Blockchain.InvItem, as: InvItem
 defmodule WC.Blockchain.InventoryServer do
   use GenServer
 
-  def start_link() do
-    GenServer.start_link(__MODULE__, [], [])
+  def start_link do
+    GenServer.start_link(__MODULE__, [], name: __MODULE__)
   end
 
   def init([]) do
@@ -23,7 +23,6 @@ defmodule WC.Blockchain.InventoryServer do
   end
 
   def getblocks do
-    Logger.info "getblocks called"
     GenServer.cast(__MODULE__, :getblocks)
   end
 
@@ -31,7 +30,7 @@ defmodule WC.Blockchain.InventoryServer do
     # Check that we don't spam the network during the initial indexing
     if LogServer.index_complete? do
       block_locator = get_block_locator()
-      Logger.info "Sending getblocks #{inspect(Block_locator)}"
+      Logger.info "Sending getblocks #{inspect(block_locator)}"
       :ok = P2PConnection.broadcast(%P2PPacket{proc: :getblocks, extra_data: block_locator})
     end
     {:noreply, state}
