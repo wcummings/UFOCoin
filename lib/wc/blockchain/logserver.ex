@@ -163,7 +163,7 @@ defmodule WC.Blockchain.LogServer do
     :ok = BlockHashIndex.insert(block_hash, offset)
     :ok = PrevBlockHashIndex.insert(block.header.prev_block_hash, offset)
     new_tip = if block.header.height > tip.header.height do
-      {:ok, ^block} = update_chain_index(log, chain_index, tip, block, false)
+      {:ok, ^block} = update_chain_index(log, chain_index, tip, block)
       :ok = MinerServer.new_block(block)
       block
     else
@@ -173,7 +173,7 @@ defmodule WC.Blockchain.LogServer do
   end
 
   def handle_cast({:update_index, old_tip, new_tip}, state = %{chain_index: chain_index, log: log}) do
-    {:ok, tip} = update_chain_index(log, chain_index, old_tip, new_tip)
+    {:ok, tip} = update_chain_index(log, chain_index, old_tip, new_tip, false)
     {:noreply, %{state | tip: tip}}
   end
   
