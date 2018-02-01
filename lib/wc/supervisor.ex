@@ -7,12 +7,12 @@ defmodule WC.Supervisor do
 
   def init([]) do
     children = [
+      worker(WC.Blockchain.InventoryServer, []),
       worker(WC.Blockchain.LogServer, []),
       supervisor(WC.Miner.Supervisor, []),
       supervisor(WC.P2P.Supervisor, []),
       worker(WC.Blockchain.BlockValidatorServer, []),
       worker(Cachex, [:block_cache, [limit: 500]]),
-      worker(WC.Blockchain.InventoryServer, [])
     ]
 
     Supervisor.init(children, strategy: :one_for_one)
