@@ -23,6 +23,7 @@ defmodule WC.Blockchain.InventoryServer do
   end
 
   def getblocks do
+    Logger.info "getblocks called"
     GenServer.cast(__MODULE__, :getblocks)
   end
 
@@ -37,7 +38,7 @@ defmodule WC.Blockchain.InventoryServer do
   end
 
   @doc "Build a list of block hashes from newest to genesis, dense to start, then sparse"
-  @spec get_block_locator() :: list(InvItem.t)
+  @spec get_block_locator() :: list(Block.block_hash)
   def get_block_locator do
     {:ok, tip} = LogServer.get_tip()
     get_block_locator(tip)
@@ -51,7 +52,6 @@ defmodule WC.Blockchain.InventoryServer do
     else
       dense_hashes ++ get_prev_block_hashes_sparse(tip) ++ [genesis_block_hash]
     end
-    |> Enum.map(fn block_hash -> %InvItem{type: :block, hash: block_hash} end)
   end
 
   def get_prev_block_hashes_sparse(tip) do

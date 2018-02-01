@@ -112,7 +112,11 @@ defmodule WC.Blockchain.LogServer do
   end
   
   def get_prev_blocks(number_of_blocks, tip) do
-    get_prev_blocks(number_of_blocks, tip, [])
+    if tip.header.height == 0 do
+      []
+    else
+      get_prev_blocks(number_of_blocks, tip, [])
+    end
   end
   
   def get_prev_blocks(number_of_blocks, tip, acc) do
@@ -269,7 +273,7 @@ defmodule WC.Blockchain.LogServer do
 	block = Block.decode(encoded_block)
 	new_tip = if block.header.height > tip.header.height do
 	  # TODO: fix redundant conditionals around update_index
-	  {:ok, ^block} = update_index(tip, block)
+	  :ok = update_index(tip, block)
 	  block
 	else
 	  tip
@@ -290,17 +294,19 @@ defmodule WC.Blockchain.LogServer do
 	      {:ok, new_hashes} = find_block_range(log, old_tip, block)
 	      for hash <- new_hashes, do: true = :ets.insert_new(chain_index, hash)
 	      for hash <- invalid_hashes, do: true = :ets.delete(chain_index, hash)
-	      # TODO: maybe eventually use pub/sub to let other procs
-	      # listen for reorgs and do stuff like getblocks
-	      # i.e. every connection process could listen,
-	      # as well as MinerServer
-	      :ok = InventoryServer.getblocks()
 	    error ->
 	      error
 	  end
 	error ->
 	  error
       end
+
+      # TODO: maybe eventually use pub/sub to let other procs
+      # listen for reorgs and do stuff like getblocks
+      # i.e. every connection process could listen,
+      # as well as MinerServer
+      :ok = InventoryServer.getblocks()
+      
       {:ok, new_tip}
     else
       {:ok, old_tip}
