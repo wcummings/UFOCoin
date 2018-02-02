@@ -26,7 +26,8 @@ defmodule WC do
       WC.P2P.AddrTable,
       WC.Blockchain.BlockHashIndex,
       WC.Blockchain.PrevBlockHashIndex,
-      WC.Blockchain.OrphanBlockTable
+      WC.Blockchain.OrphanBlockTable,
+      WC.Blockchain.ChainState
     ]
     
     Enum.each(mnesia_tables, fn table ->

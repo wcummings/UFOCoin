@@ -11,7 +11,7 @@ alias WC.Miner.MinerServer, as: MinerServer
 defmodule WC.Blockchain.LogServer do
   use GenServer
 
-  @initial_state %{tip: nil, index_complete: false, log: nil, chain_index: nil}
+  @initial_state %{tip: nil, index_complete: false, log: nil}
 
   #
   # PUBLIC
@@ -27,9 +27,8 @@ defmodule WC.Blockchain.LogServer do
       Logger.info "Inserting genesis block..."
       BlockchainLog.append_block(log, Block.encode(WC.genesis_block))
     end
-    chain_index = :ets.new(:chain_index, [:set, :protected])    
     spawn_link index_blocks(self())
-    {:ok, %{@initial_state | log: log, chain_index: chain_index}}
+    {:ok, %{@initial_state | log: log}}
   end
 
   @spec get_block_by_hash(BlockHeader.block_hash) :: {:ok, Block.t} | {:error, :notfound}
@@ -57,8 +56,8 @@ defmodule WC.Blockchain.LogServer do
     GenServer.cast(__MODULE__, {:update, block})
   end
 
-  @spec update_index(Block.t, Block.t) :: :ok
-  def update_index(old_tip, new_tip) do
+  @spec update_chain_index(Block.t, Block.t) :: :ok
+  def update_chain_index(old_tip, new_tip) do
     GenServer.cast(__MODULE__, {:update_chain_index, old_tip, new_tip})
   end
 
@@ -74,7 +73,7 @@ defmodule WC.Blockchain.LogServer do
   def get_next_block_hashes_in_chain(number_of_blocks, starting_block_hash, acc) do
     case get_blocks_by_prev_hash(starting_block_hash) do
       {:ok, blocks} ->
-	case Enum.filter(blocks, fn block -> is_in_main_chain(Block.hash(block)) end) do
+	case Enum.filter(blocks, fn block -> is_in_longest_chain(Block.hash(block)) end) do
 	  [] ->
 	    acc
 	  [next_block] ->
@@ -86,18 +85,18 @@ defmodule WC.Blockchain.LogServer do
     end
   end
 
-  @spec is_in_main_chain(Block.block_hash) :: true | false
-  def is_in_main_chain(block_hash) do
-    GenServer.call(__MODULE__, {:is_in_main_chain, block_hash})
+  @spec is_in_longest_chain(Block.block_hash) :: true | false
+  def is_in_longest_chain(block_hash) do
+    GenServer.call(__MODULE__, {:is_in_longest_chain, block_hash})
   end
 
-  @spec find_first_block_hash_in_chain(list(Block.block_hash)) :: {:ok, Block.t} | {:error, :notfound}
-  def find_first_block_hash_in_chain([]) do
+  @spec find_first_block_hash_in_longest_chain(list(Block.block_hash)) :: {:ok, Block.t} | {:error, :notfound}
+  def find_first_block_hash_in_longest_chain([]) do
     {:error, :notfound}
   end
   
-  def find_first_block_hash_in_chain(block_hashes) do
-    case Enum.find(block_hashes, &is_in_main_chain/1) do
+  def find_first_block_hash_in_longest_chain(block_hashes) do
+    case Enum.find(block_hashes, &is_in_longest_chain/1) do
       nil ->
 	{:error, :notfound}
       block_hash ->
@@ -148,32 +147,33 @@ defmodule WC.Blockchain.LogServer do
     {:reply, {:ok, tip}, state}
   end
 
-  def handle_call({:is_in_main_chain, block_hash}, _from, state = %{chain_index: chain_index}) do
-    {:reply, is_in_main_chain(chain_index, block_hash), state}
+  def handle_call({:is_in_longest_chain, block_hash}, _from, state) do
+    {:reply, is_in_longest_chain(block_hash), state}
   end
 
   def handle_call(:index_complete, _from, state = %{index_complete: index_complete}) do
     {:reply, index_complete, state}
   end
   
-  def handle_cast({:update, encoded_block}, state = %{tip: tip, log: log, chain_index: chain_index}) do
+  def handle_cast({:update, encoded_block}, state = %{tip: tip, log: log}) do
     block = Block.decode(encoded_block)
     block_hash = Block.hash(encoded_block)
     offset = BlockchainLog.append_block(log, encoded_block)    
     :ok = BlockHashIndex.insert(block_hash, offset)
     :ok = PrevBlockHashIndex.insert(block.header.prev_block_hash, offset)
-    new_tip = if block.header.height > tip.header.height do
-      {:ok, ^block} = update_chain_index(log, chain_index, tip, block)
+
+    {:ok, new_tip} = update_chain_state(log, tip, block)
+    if block == new_tip do
+      # TODO: eventually use pub/sub for reorgs
       :ok = MinerServer.new_block(block)
-      block
-    else
-      tip
+      :ok = InventoryServer.getblocks()
     end
+
     {:noreply, %{state | tip: new_tip}}
   end
 
-  def handle_cast({:update_index, old_tip, new_tip}, state = %{chain_index: chain_index, log: log}) do
-    {:ok, tip} = update_chain_index(log, chain_index, old_tip, new_tip, false)
+  def handle_cast({:update_chain_state, old_tip, new_tip}, state = %{chain_index: chain_index, log: log}) do
+    {:ok, tip} = update_chain_state(log, old_tip, new_tip)
     {:noreply, %{state | tip: tip}}
   end
   
@@ -189,17 +189,22 @@ defmodule WC.Blockchain.LogServer do
   # PRIVATE
   #
 
-  def is_in_main_chain(chain_index, block_hash) do
-    :ets.member(chain_index, block_hash)
+  def is_in_longest_chain(block_hash) do
+    case ChainState.get_height_and_cum_difficulty(block_hash) do
+      {:error, :notfound} ->
+	false
+      {:ok, {_, _, in_longest}} ->
+	in_longest
+    end
   end
   
-  def find_first_parent_in_chain(log, chain_index, block) do
+  def find_first_parent_in_longest_chain(log, block) do
     prev_block_hash = block.header.prev_block_hash    
     case get_block_with_index(log, BlockHashIndex, prev_block_hash) do
       {:ok, prev_block} ->
-	case is_in_main_chain(chain_index, prev_block_hash) do
+	case is_in_longest_chain(prev_block_hash) do
 	  false ->
-	    find_first_parent_in_chain(log, chain_index, prev_block)
+	    find_first_parent_in_longest_chain(log, prev_block)
 	  true ->
 	    {:ok, prev_block}
 	end
@@ -270,52 +275,36 @@ defmodule WC.Blockchain.LogServer do
 	Logger.info "Indexing... #{Base.encode16(block_hash)}"
 	:ok = BlockHashIndex.insert(block_hash, offset)
 	block = Block.decode(encoded_block)
-	new_tip = if block.header.height > tip.header.height do
-	  # TODO: fix redundant conditionals around update_index
-	  :ok = update_index(tip, block)
-	  block
-	else
-	  tip
-	end
+	{:ok, new_tip} = update_chain_state(tip, block)
 	index_blocks(log, next_offset, new_tip)
       {:error, :eof} ->
 	tip
     end
   end
 
-  @doc "Handle chain reorgs"
-  def update_chain_index(log, chain_index, old_tip, new_tip) do
-    update_chain_index(log, chain_index, old_tip, new_tip, true)
-  end
-  
-  def update_chain_index(log, chain_index, old_tip, new_tip, getblocks) do
-    if new_tip.header.height > old_tip.header.height do
-      case find_first_parent_in_chain(log, chain_index, new_tip) do
-	{:ok, block} ->
-	  case find_block_range(log, new_tip, block) do
-	    {:ok, invalid_hashes} ->
-	      {:ok, new_hashes} = find_block_range(log, old_tip, block)
-	      for hash <- new_hashes, do: true = :ets.insert_new(chain_index, hash)
-	      for hash <- invalid_hashes, do: true = :ets.delete(chain_index, hash)
-	    error ->
-	      error
-	  end
-	error ->
-	  error
+  def update_chain_state(log, old_tip, new_tip) do
+    {:atomic, result} = :mnesia.transaction(fn ->
+      {:ok, {height, cum_difficulty, in_longest}} = ChainState.get_height_and_cum_difficulty(new_tip.header.prev_block_hash)
+      new_cum_difficulty = cum_difficulty + new_tip.difficulty
+      {:ok, {_, old_cum_difficulty, old_in_longest}} = ChainState.get_height_and_cum_difficulty(Block.hash(old_tip))
+      is_longest = new_cum_difficulty > old_cum_difficulty
+      :ok = ChainState.insert(Block.hash(new_tip), new_tip.header.height, new_cum_difficulty, is_longest)
+      if is_longest do
+	case find_first_parent_in_longest_chain(log, new_tip) do
+	  {:ok, block} ->
+	    {:ok, invalid_hashes} = find_block_range(log, new_tip, block)
+	    {:ok, new_hashes} = find_block_range(log, old_tip, block)	      
+	    for hash <- invalid_hashes, do: :ok = ChainState.update_longest(hash, false)
+	    for hash <- new_hashes, do: :ok = ChainState.update_longest(hash, true)
+	    {:ok, new_tip}
+	  error ->
+	    error
+	end
+      else
+	{:ok, old_tip}
       end
+    end)
+    result
+  end
 
-      # TODO: maybe eventually use pub/sub to let other procs
-      # listen for reorgs and do stuff like getblocks
-      # i.e. every connection process could listen,
-      # as well as MinerServer
-      if getblocks do
-	:ok = InventoryServer.getblocks()
-      end
-      
-      {:ok, new_tip}
-    else
-      {:ok, old_tip}
-    end
-  end
-  
 end
