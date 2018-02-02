@@ -125,8 +125,9 @@ defmodule WC.P2P.Connection do
   end
 
   def handle_packet(%P2PPacket{proc: :getblocks, extra_data: block_locator}, state = %{socket: socket}) do
-    Logger.info "getblocks received"
-    case LogServer.find_first_block_hash_in_chain(block_locator) do
+    # Logger.info "Received block locator"
+    # for hash <- block_locator, do: Logger.info "Locator hash: #{Base.encode16(hash)}"
+    case LogServer.find_first_block_hash_in_longest_chain(block_locator) do
       {:error, :notfound} ->
 	Logger.error "No block found in block locator"
 	# TODO: do we tell the node we can't find it?

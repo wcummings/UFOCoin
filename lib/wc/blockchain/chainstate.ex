@@ -30,7 +30,7 @@ defmodule WC.Blockchain.ChainState do
   @spec update_longest(BlockHeader.block_hash, boolean) :: :ok
   def update_longest(block_hash, in_longest) do
     {:ok, {height, cum_difficulty, _}} = get_height_and_cum_difficulty(block_hash)
-    insert(block_hash, height, cum_difficulty, is_longest)
+    insert(block_hash, height, cum_difficulty, in_longest)
   end
   
 end
