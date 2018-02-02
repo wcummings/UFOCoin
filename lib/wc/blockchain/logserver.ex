@@ -199,23 +199,25 @@ defmodule WC.Blockchain.LogServer do
     end
   end
 
+  @doc "Return a range of blocks inclusively, starting_block is the tip."
+  @spec find_block_range(BlockchainLog.t, Block.t, Block.t) :: list(BlockHeader.block_hash)
   def find_block_range(log, starting_block, ending_block) do
     find_block_range(log, starting_block, ending_block, [])
   end
   
   def find_block_range(log, starting_block, ending_block, acc) do
-    prev_block_hash = starting_block.header.prev_block_hash
-    case get_block_with_index(log, BlockHashIndex, prev_block_hash) do
-      {:ok, prev_block} ->
-	case prev_block == ending_block do
-	  false ->
-	    find_block_range(log, prev_block, ending_block, [prev_block_hash|acc])
-	  true ->
-	    {:ok, [prev_block_hash|acc]}
-	end
-      error ->
-	error
+    if Block.equal?(starting_block, ending_block) do
+      {:ok, [Block.hash(starting_block)|acc]}
+    else
+      prev_block_hash = starting_block.header.prev_block_hash
+      case get_block_with_index(log, BlockHashIndex, prev_block_hash) do
+	{:ok, prev_block} ->
+	  find_block_range(log, prev_block, ending_block, [prev_block_hash|acc])
+	{:error, :notfound} ->
+	  {:error, {:notfound, prev_block_hash}}
+      end
     end
+    
   end
 
   def get_block_with_index(log, index, block_hash) do
@@ -261,11 +263,11 @@ defmodule WC.Blockchain.LogServer do
 	Logger.info "Indexing... #{Base.encode16(block_hash)}"
 	:ok = BlockHashIndex.insert(block_hash, offset)
 	block = Block.decode(encoded_block)
+	# Genesis block has invalid prev hash, do not index it normally
 	if block.header.height == 0 do
 	  :ok = ChainState.insert(block_hash, block.header.height, block.header.difficulty, true)
 	  index_blocks(log, next_offset, block)
 	else
-	  # Genesis block has invalid prev hash, do not index it
 	  :ok = PrevBlockHashIndex.insert(block.header.prev_block_hash, offset)	
 	  {:ok, new_tip} = update_chain_state(log, tip, block)
 	  index_blocks(log, next_offset, new_tip)
@@ -285,8 +287,8 @@ defmodule WC.Blockchain.LogServer do
       if is_longest do
 	case find_first_parent_in_longest_chain(log, new_tip) do
 	  {:ok, block} ->
-	    {:ok, invalid_hashes} = find_block_range(log, new_tip, block)
-	    {:ok, new_hashes} = find_block_range(log, old_tip, block)
+	    {:ok, [_|new_hashes]} = find_block_range(log, new_tip, block)
+	    {:ok, [_|invalid_hashes]} = find_block_range(log, old_tip, block)
 	    Logger.info "Chain updated:"
 	    Logger.info "Added hashes: #{inspect(new_hashes)}"
 	    Logger.info "Removed hashes: #{inspect(invalid_hashes)}"

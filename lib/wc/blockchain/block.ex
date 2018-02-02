@@ -47,6 +47,11 @@ defmodule WC.Blockchain.Block do
     %WC.Blockchain.Block{header: block_header, txs: []}
   end
 
+  @spec equal?(Block.t, Block.t) :: true | false
+  def equal?(block1, block2) do
+    Map.equal?(block1, block2)
+  end
+  
   # IMPORTANT NOTE: This should check if the block is orphaned LAST,
   # the caller should be able to trust that an orphaned block is valid,
   # aside from being an orphan.

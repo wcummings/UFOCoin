@@ -11,7 +11,7 @@ defmodule WC.Blockchain.InvItem do
 
   @spec encode(t) :: encoded_invitem
   def encode(%WC.Blockchain.InvItem{type: :block, hash: block_hash}) do
-    <<0x00, block_hash>>
+    <<0x00, block_hash :: binary>>
   end
 
   @spec decode(encoded_invitem) :: t
