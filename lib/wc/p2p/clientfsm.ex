@@ -44,7 +44,7 @@ defmodule WC.P2P.ClientFSM do
       {:ok, %P2PAddr{ip: ip, port: port}} ->
 	{:next_state, :connecting, %{data | ip: ip, port: port}, 0}
       {:error, :exhausted} ->
-	Logger.debug "Not enough peers in database, waiting 10s before retrying..."
+	# Logger.debug "Not enough peers in database, waiting 10s before retrying..."
 	Process.send_after(self(), :checkout, 10 * 1000)
 	{:keep_state, data}
     end
@@ -55,7 +55,7 @@ defmodule WC.P2P.ClientFSM do
       {:ok, socket} ->
 	{:next_state, :starting_handshake, %{data | ip: ip, port: port, socket: socket}, 0}
       {:error, error} ->
-	Logger.info "Connection error: #{inspect(error)}"
+	Logger.error "#{inspect(ip)}:#{port}: Connection error: #{inspect(error)}"
 	if data.retries > 3 do # TODO: make this configurable
 	  {:next_state, :checkout_addr, @initial_state, 0}
 	else
@@ -71,7 +71,7 @@ defmodule WC.P2P.ClientFSM do
 
   def handle_event(:info, %P2PPacket{proc: :version, extra_data: version_string}, :waiting_for_handshake, data) do
     if WC.version != version_string do
-      Logger.info("Version mismatch #{WC.version} != #{version_string}")
+      Logger.info("#{inspect(data.ip)}:#{data.port}: Version mismatch #{WC.version} != #{version_string}")
       {:stop, :normal}
     else
       {:keep_state, data}
@@ -89,7 +89,6 @@ defmodule WC.P2P.ClientFSM do
   end
   
   def handle_event(:timeout, _, :waiting_for_handshake, _data) do
-    Logger.info "Handshake timeout"
     {:stop, :normal}
   end
 

@@ -1,6 +1,6 @@
 alias WC.Blockchain.BlockHeader, as: BlockHeader
 
-# TODO: this might belong in the P2P namespaces
+# TODO: this might belong in the P2P namespace
 defmodule WC.Blockchain.InvItem do
   @enforce_keys [:type, :hash]
   defstruct [:type, :hash]

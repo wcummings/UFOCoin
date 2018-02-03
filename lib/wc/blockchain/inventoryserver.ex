@@ -41,7 +41,6 @@ defmodule WC.Blockchain.InventoryServer do
   def send_getblocks do
     # Check that we don't spam the network during the initial indexing    
     if LogServer.index_complete? do
-      Logger.info "Sending getblocks"      
       :ok = P2PConnection.broadcast(%P2PPacket{proc: :getblocks, extra_data: get_block_locator()})
     end
   end

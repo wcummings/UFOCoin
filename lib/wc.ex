@@ -21,7 +21,7 @@ defmodule WC do
   def start(_, _) do
     Logger.info "Starting WhipCash node"
 
-    Logger.info "Initializing mnesia tables..."
+    Logger.debug "Initializing mnesia tables..."
     mnesia_tables = [
       WC.P2P.AddrTable,
       WC.Blockchain.BlockHashIndex,
@@ -29,9 +29,11 @@ defmodule WC do
       WC.Blockchain.OrphanBlockTable,
       WC.Blockchain.ChainState
     ]
+
+    print_configuration()
     
     Enum.each(mnesia_tables, fn table ->
-      Logger.info "Initializing #{inspect(table)}..."
+      Logger.debug "Initializing #{inspect(table)}..."
       case table.init do
 	{:aborted, {:already_exists, _}} ->
 	  :ok
@@ -91,5 +93,16 @@ defmodule WC do
   # get_myip(Ip) ->
   #   [{_, {MyIp, _}}|_] = inet_ext:route(Ip),
   #   inet_parse:ntoa(MyIp).
+
+  def print_configuration do
+    Logger.info "Configuration:"
+    Enum.filter(Application.get_all_env(:wc), fn {key, _} -> key != :included_applications end)
+    |> Enum.each(fn {key, value} -> Logger.info "#{key} => #{inspect(value)}" end)
+    Logger.info "End Configuration."
+  end
+
+  def base16_hashes(hashes) do
+    Enum.map(hashes, &Base.encode16/1)
+  end
   
 end

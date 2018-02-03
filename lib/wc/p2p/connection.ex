@@ -7,6 +7,7 @@ alias WC.P2P.AddrTable, as: P2PAddrTable
 alias WC.P2P.PingFSM, as: P2PPingFSM
 alias WC.P2P.PingFSMSupervisor, as: P2PPingFSMSupervisor
 alias WC.Blockchain.LogServer, as: LogServer
+alias WC.Blockchain.BlockHeader, as: BlockHeader
 
 defmodule WC.P2P.Connection do
   use GenServer
@@ -104,12 +105,12 @@ defmodule WC.P2P.Connection do
   def handle_packet(packet = %P2PPacket{proc: :block, extra_data: block}, state) do
     case BlockValidatorServer.validate_block(block) do
       :ok ->
-	Logger.info "Block accepted: #{inspect(block)}"
+	Logger.info "Block accepted: #{BlockHeader.pprint(block.header)}"
 	broadcast(packet)
       {:error, :alreadyaccepted} ->
 	:ok # Ignore it
       {:error, error} ->
-	Logger.warn "Block rejected, reason: #{inspect(error)}, block: #{inspect(block)}"
+	Logger.warn "Block rejected, reason: #{inspect(error)}, #{BlockHeader.pprint(block.header)}"	
     end
     state
   end
@@ -129,21 +130,18 @@ defmodule WC.P2P.Connection do
     # for hash <- block_locator, do: Logger.info "Locator hash: #{Base.encode16(hash)}"
     case LogServer.find_first_block_hash_in_longest_chain(block_locator) do
       {:error, :notfound} ->
-	Logger.error "No block found in block locator"
 	# TODO: do we tell the node we can't find it?
   	:ok
       {:ok, block_hash} ->
 	# TODO: use constant instead of 500
 	case LogServer.get_next_block_hashes_in_chain(500, block_hash) do
 	  [] ->
-	    Logger.info "Chain up to date, no invitems to send"
 	    # Do nothing
 	    nil
 	  block_hashes ->
 	    # Send inventory
 	    invitems = Enum.map(block_hashes, &InvItem.from_block_hash/1)
 	    packet = %P2PPacket{proc: :inv, extra_data: invitems}
-	    Logger.info "Sending invitems: #{inspect(invitems)}"
 	    send_packet(socket, packet)
 	end
     end
@@ -151,7 +149,6 @@ defmodule WC.P2P.Connection do
   end
 
   def handle_packet(%P2PPacket{proc: :inv, extra_data: invitems}, state) do
-    Logger.info "Got inv items: #{inspect(invitems)}"
     state
   end
   

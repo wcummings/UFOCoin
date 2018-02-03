@@ -27,5 +27,5 @@ For expiring keys in mnesia and shit like that
 * TODO Make tests not suck
 * TODO Repalce alias w/ import where appropriate
 * TODO Macro for size of functions returning binaries
-
+* TODO Convert mnesia tables to ets for safety
 

@@ -290,8 +290,8 @@ defmodule WC.Blockchain.LogServer do
 	    {:ok, [_|new_hashes]} = find_block_range(log, new_tip, block)
 	    {:ok, [_|invalid_hashes]} = find_block_range(log, old_tip, block)
 	    Logger.info "Chain updated:"
-	    Logger.info "Added hashes: #{inspect(new_hashes)}"
-	    Logger.info "Removed hashes: #{inspect(invalid_hashes)}"
+	    Logger.info "Added hashes: #{inspect(Enum.map(new_hashes, &Base.encode16/1))}"
+	    Logger.info "Removed hashes: #{inspect(Enum.map(invalid_hashes, &Base.encode16/1))}"
 	    Logger.info "-------------------"
 	    for hash <- invalid_hashes, do: :ok = ChainState.update_longest(hash, false)
 	    for hash <- new_hashes, do: :ok = ChainState.update_longest(hash, true)

@@ -35,7 +35,6 @@ defmodule WC.P2P.AddrServer do
       [addr] = Enum.take_random(eligible_addrs, 1)
       ref = Process.monitor(from)
       addrs_by_ref = Map.put(addrs_by_ref, ref, addr)
-      Logger.info "Checked out #{inspect(addr.ip)}:#{addr.port}"
       {:reply, {:ok, addr}, %{state | addrs_by_ref: addrs_by_ref}}
     else
       {:reply, {:error, :exhausted}, state}
@@ -45,7 +44,6 @@ defmodule WC.P2P.AddrServer do
   def handle_info({:DOWN, ref, _, _, _}, state = %{addrs_by_ref: addrs_by_ref}) do
     addr = addrs_by_ref[ref]
     addrs_by_ref = Map.delete(addrs_by_ref, ref)
-    Logger.info "Released #{inspect(addr.ip)}:#{addr.port}"
     {:noreply, %{state | addrs_by_ref: addrs_by_ref}}
   end
 

@@ -34,5 +34,5 @@ defmodule WC.Util do
 
   def max(x, y) when x > y, do: x
   def max(_, y), do: y
-  
+
 end

@@ -37,11 +37,11 @@ config :wc,
   # ip: {127, 0, 0, 1},
   outbound_connections: 5,
   seed_dns: 'test1.wpc.io',
-  key_dir: "/etc/wc/keys",
   mining_proc_count: 1,
   # data_dir: "/var/wc/"
   data_dir: "."
 
 config :logger, :console,
   format: "$time $metadata[$level] $levelpad$message\n",
-  metadata: [:module, :function, :line]
+  metadata: [:module, :function, :line],
+  level: :info
