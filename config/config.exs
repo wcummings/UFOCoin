@@ -42,4 +42,6 @@ config :wc,
   # data_dir: "/var/wc/"
   data_dir: "."
 
-config :logger, :console, metadata: [:module, :function, :line]
+config :logger, :console,
+  format: "$time $metadata[$level] $levelpad$message\n",
+  metadata: [:module, :function, :line]
