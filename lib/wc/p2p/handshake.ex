@@ -23,8 +23,11 @@ defmodule WC.P2P.Handshake do
   
   def init([socket]) do
     {:ok, {address, port}} = :inet.peername(socket)
-    address_string = :inet.ntoa(address)
-    Logger.info "New connection from #{address_string}:#{port}"
+    # address_string = :inet.ntoa(address)
+    # Logger.info "New connection from #{address_string}:#{port}"
+    Logger.info "New connection from #{inspect(address)}:#{port}"
+    # Wait for ack that we control the tcp socket
+    # Maybe should use ranch
     :ok = :inet.setopts(socket, @socket_opts)
     {:ok, %{@initial_state | socket: socket}, @handshake_timeout_ms}
   end

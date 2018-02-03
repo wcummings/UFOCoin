@@ -11,9 +11,14 @@ defmodule WC.P2P.Acceptor do
 
   def loop(socket) do
     case :gen_tcp.accept(socket, @accept_timeout) do
-      {:ok, client} -> 
-	{:ok, pid} = HandshakeSupervisor.start_child(client)
+      {:ok, client} ->
+	# YOLO
+	pid = spawn_link fn ->
+	  receive do :tcp_ack -> :ok end
+	  {:ok, pid} = HandshakeSupervisor.start_child(client)
+	end
 	:ok = :gen_tcp.controlling_process(client, pid)
+	send pid, :tcp_ack
 	loop(socket)
       {:error, :timeout} ->
 	loop(socket)
