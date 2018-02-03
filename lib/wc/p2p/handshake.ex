@@ -5,6 +5,7 @@ alias WC.P2P.ConnectionSupervisor, as: P2PConnectionSupervisor
 
 defmodule WC.P2P.Handshake do
   use GenServer
+  @behaviour :ranch_protocol
 
   @initial_state %{
     socket: nil,
@@ -17,19 +18,19 @@ defmodule WC.P2P.Handshake do
   
   @socket_opts [:binary, packet: 4, active: :once]
 
-  def start_link(opts, socket) do
-    GenServer.start_link(__MODULE__, [socket], opts)
+  def start_link(ref, socket, transport, _opts) do
+    pid = :proc_lib.spawn_link(__MODULE__, :init, [ref, socket, transport])
+    {:ok, pid}
   end
   
-  def init([socket]) do
+  def init(ref, socket, _transport) do
+    :ok = :ranch.accept_ack(ref)
     {:ok, {address, port}} = :inet.peername(socket)
     # address_string = :inet.ntoa(address)
     # Logger.info "New connection from #{address_string}:#{port}"
     Logger.info "New connection from #{inspect(address)}:#{port}"
-    # Wait for ack that we control the tcp socket
-    # Maybe should use ranch
     :ok = :inet.setopts(socket, @socket_opts)
-    {:ok, %{@initial_state | socket: socket}, @handshake_timeout_ms}
+    :gen_server.enter_loop(__MODULE__, [], %{@initial_state | socket: socket}, @handshake_timeout_ms)
   end
 
   def handle_info({:tcp, _socket, data}, state = %{socket: socket}) do

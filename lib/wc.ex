@@ -52,6 +52,8 @@ defmodule WC do
     for ip <- seed_nodes, do: WC.P2P.AddrTable.insert(%WC.P2P.Addr{ip: ip, port: default_port})
 
     {:ok, pid} = WC.Supervisor.start_link
+    port = Application.get_env(:wc, :port, default_port)
+    :ranch.start_listener(make_ref(), :ranch_tcp, [{:port, port}], WC.P2P.Handshake, [])
 
     internal_port = Application.get_env(:wc, :internal_port)
     
