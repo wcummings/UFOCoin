@@ -8,7 +8,7 @@ defmodule WC.Blockchain.Block do
   @enforce_keys [:header, :txs]
   defstruct [:header, :txs]
 
-  @hardcoded_difficulty 8
+  @hardcoded_difficulty 2
   
   @type block_validation_error :: :notfound | :orphan | :badheight | :alreadyaccepted
   @type encoded_block :: binary

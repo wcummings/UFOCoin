@@ -164,7 +164,7 @@ defmodule WC.Blockchain.LogServer do
   end
 
   def handle_info({:index_complete, tip}, state) do
-    Logger.info "Indexing complete, tip = #{inspect(tip)}"
+    Logger.info "Indexing complete: [tip: #{BlockHeader.pprint(tip.header)}]"
     # This might happen automagically
     :ok = InventoryServer.getblocks()
     :ok = MinerServer.new_block(tip)
@@ -199,15 +199,14 @@ defmodule WC.Blockchain.LogServer do
     end
   end
 
-  @doc "Return a range of blocks inclusively, starting_block is the tip."
   @spec find_block_range(BlockchainLog.t, Block.t, Block.t) :: list(BlockHeader.block_hash)
   def find_block_range(log, starting_block, ending_block) do
-    find_block_range(log, starting_block, ending_block, [])
+    find_block_range(log, starting_block, ending_block, [Block.hash(starting_block)])
   end
   
   def find_block_range(log, starting_block, ending_block, acc) do
     if Block.equal?(starting_block, ending_block) do
-      {:ok, [Block.hash(starting_block)|acc]}
+      {:ok, acc}
     else
       prev_block_hash = starting_block.header.prev_block_hash
       case get_block_with_index(log, BlockHashIndex, prev_block_hash) do
@@ -286,10 +285,11 @@ defmodule WC.Blockchain.LogServer do
       :ok = ChainState.insert(Block.hash(new_tip), new_tip.header.height, new_cum_difficulty, is_longest)
       if is_longest do
 	case find_first_parent_in_longest_chain(log, new_tip) do
-	  {:ok, block} ->
-	    {:ok, [_|new_hashes]} = find_block_range(log, new_tip, block)
-	    {:ok, [_|invalid_hashes]} = find_block_range(log, old_tip, block)
+	  {:ok, parent} ->
+	    {:ok, [_|new_hashes]} = find_block_range(log, new_tip, parent)
+	    {:ok, [_|invalid_hashes]} = find_block_range(log, old_tip, parent)
 	    Logger.info "Chain updated:"
+	    Logger.info "Common parent: #{Block.hash(parent) |> Base.encode16}"
 	    Logger.info "Added hashes: #{inspect(Enum.map(new_hashes, &Base.encode16/1))}"
 	    Logger.info "Removed hashes: #{inspect(Enum.map(invalid_hashes, &Base.encode16/1))}"
 	    Logger.info "-------------------"
