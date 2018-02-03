@@ -7,7 +7,7 @@ defmodule WC.Blockchain.ChainState do
   """
 
   def init do
-    :mnesia.create_table(ChainStateTable, [attributes: [:block_hash, :height, :cum_difficulty, :in_longest]])
+    :mnesia.create_table(ChainStateTable, [attributes: [:block_hash, :height, :cum_difficulty, :in_longest], type: :set])
   end
 
   @spec insert(BlockHeader.block_hash, non_neg_integer, non_neg_integer, boolean) :: term
