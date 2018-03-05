@@ -7,6 +7,7 @@ alias WC.Blockchain.Block, as: Block
 alias WC.Blockchain.Log, as: BlockchainLog
 alias WC.Blockchain.InventoryServer, as: InventoryServer
 alias WC.Blockchain.ChainState, as: ChainState
+alias WC.Blockchain.OrphanBlockTable, as: OrphanBlockTable
 alias WC.Miner.MinerServer, as: MinerServer
 
 defmodule WC.Blockchain.LogServer do
@@ -57,6 +58,11 @@ defmodule WC.Blockchain.LogServer do
     GenServer.cast(__MODULE__, {:update, block})
   end
 
+  @spec exists?(Block.block_hash) :: true | false
+  def exists?(block_hash) do
+    GenServer.call(__MODULE__, {:exists, block_hash})
+  end
+  
   @spec get_next_block_hashes_in_chain(non_neg_integer, Block.block_hash) :: list(Block.block_hash)
   def get_next_block_hashes_in_chain(number_of_blocks, starting_block_hash) do
     get_next_block_hashes_in_chain(number_of_blocks, starting_block_hash, [])
@@ -129,6 +135,19 @@ defmodule WC.Blockchain.LogServer do
     {:reply, {:ok, tip}, state}
   end
 
+  def handle_call({:exists, block_hash}, state) do
+    case {BlockHashIndex.get_offset(block_hash), OrphanBlockTable.get(block_hash)} do
+      {{:error, :notfound}, _} ->
+	{:reply, false, state}
+      {_, {:error, :notfound}} ->
+	{:reply, false, state}
+      {_, {:ok, _}} ->
+	{:reply, true, state}
+      {{:ok, _}, _} ->
+	{:reply, true, state}
+    end
+  end
+  
   def handle_call({:is_in_longest_chain, block_hash}, _from, state) do
     {:reply, is_in_longest_chain(block_hash), state}
   end
