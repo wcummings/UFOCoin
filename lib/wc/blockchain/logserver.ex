@@ -68,7 +68,7 @@ defmodule WC.Blockchain.LogServer do
   
   @spec get_next_block_hashes_in_chain(non_neg_integer, Block.block_hash) :: list(Block.block_hash)
   def get_next_block_hashes_in_chain(number_of_blocks, starting_block_hash) do
-    get_next_block_hashes_in_chain(number_of_blocks, starting_block_hash, [])
+    Enum.reverse(get_next_block_hashes_in_chain(number_of_blocks, starting_block_hash, []))
   end
   
   def get_next_block_hashes_in_chain(0, _, acc) do
@@ -171,7 +171,8 @@ defmodule WC.Blockchain.LogServer do
   def handle_cast({:update, encoded_block}, state = %{tip: tip, log: log}) do
     block = Block.decode(encoded_block)
     block_hash = Block.hash(encoded_block)
-    offset = BlockchainLog.append_block(log, encoded_block)    
+    offset = BlockchainLog.append_block(log, encoded_block)
+    Logger.info "Inserted block: #{Base.encode16(Block.hash(encoded_block))} @ offset: #{offset}"
     :ok = BlockHashIndex.insert(block_hash, offset)
     :ok = PrevBlockHashIndex.insert(block.header.prev_block_hash, offset)
     :ok = OrphanBlockTable.delete(block_hash) # Remove orphan entry, if one existed
@@ -179,7 +180,7 @@ defmodule WC.Blockchain.LogServer do
     {:ok, new_tip} = update_chain_state(log, tip, block)
     if block == new_tip do
       # TODO: eventually use pub/sub for reorgs
-      Logger.info "New tip: #{Base.encode16(Block.hash(new_tip))}"
+      # Logger.info "New tip: #{Base.encode16(Block.hash(new_tip))}"
       :ok = MinerServer.new_block(block)
       # :ok = InventoryServer.getblocks()
       P2PConnection.broadcast(%P2PPacket{proc: :inv, extra_data: [InvItem.from_block_hash(Block.hash(new_tip))]})

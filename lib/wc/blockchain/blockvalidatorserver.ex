@@ -40,14 +40,15 @@ defmodule WC.Blockchain.BlockValidatorServer do
 	      orphan_hashes = Enum.map(orphans, &Block.hash/1) |> Enum.map(&Base.encode16/1)
 	      Logger.info "Found orphans for #{Base.encode16(block_hash)}: #{inspect(orphan_hashes)}"
 	    end
-	    # Nested mnesia transactions
-	    :mnesia.transaction(fn ->
-	      Enum.each(orphans, fn _ -> :ok = LogServer.update(block) end) # NOTE: This is order sensitive
+	  # Nested mnesia transactions
+	  {:atomic, :ok} = :mnesia.transaction(fn ->
+	      # FIXME: VALIDATE THESE
+	      Enum.each(orphans, fn orphan -> :ok = LogServer.update(orphan) end) # NOTE: This is order sensitive
 	      Enum.map(orphans, &Block.hash/1)
 	      |> Enum.each(&OrphanBlockTable.delete/1)
 	    end)
 	    {:reply, :ok, state}
-	  {:error, :orphan} ->
+	{:error, :orphan} ->
 	    # See Block.validate/1 in block.ex for details.
 	    :ok = OrphanBlockTable.insert(block)
 	    :ok = InventoryServer.getblocks()
@@ -57,9 +58,20 @@ defmodule WC.Blockchain.BlockValidatorServer do
 	end
     end
   end
-  
+
   def find_orphans(block) do
     find_orphans(block, [])
+  end
+
+  def find_orphans(block, orphans) do
+    case OrphanBlockTable.get_by_prev_block_hash(Block.hash(block)) do
+      {:ok, parent_block} ->
+	# This would be a nice place to recurse to validate_block/1,
+	# if it weren't a genserver call
+	find_orphans(parent_block, [parent_block|orphans])
+      {:error, :notfound} ->
+	orphans
+    end    
   end
   
   def find_orphans(block, orphans) do
