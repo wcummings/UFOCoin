@@ -2,6 +2,7 @@ require Logger
 
 alias WC.Blockchain.BlockValidatorServer, as: BlockValidatorServer
 alias WC.Blockchain.InvItem, as: InvItem
+alias WC.Blockchain.InventoryServer, as: InventoryServer
 alias WC.Blockchain.LogServer, as: LogServer
 alias WC.Blockchain.BlockHeader, as: BlockHeader
 alias WC.Blockchain.Block, as: Block
@@ -163,12 +164,13 @@ defmodule WC.P2P.Connection do
     {asked_for2, new_already_asked_for} = Enum.reduce(invitems, {asked_for, already_asked_for}, &ask_for/2)
     current_ts = :os.system_time(:millisecond)
     invitems = PriorityQueue.get(asked_for2, current_ts)
-    |> Enum.filter(fn invitem -> LogServer.exists?(invitem.hash) end)
+    |> Enum.filter(fn invitem -> not LogServer.exists?(invitem.hash) end)
     |> Enum.take(1) # FIXME: make configurable or something
     asked_for3 = Enum.reduce(invitems, asked_for2, &PriorityQueue.delete/2)
     end_time = :os.system_time(:millisecond)
     # Logger.debug "Built getdata batches in #{end_time - start_time}ms"
     if length(invitems) > 0 do
+      Logger.debug "Sending invitems: #{inspect(invitems)}"
       send_packet(socket, %P2PPacket{proc: :getdata, extra_data: invitems})
       %InvItem{type: :block, hash: last_block_hash_in_batch} = Enum.at(invitems, -1)
       %{state | last_block_hash_in_batch: last_block_hash_in_batch, asked_for: asked_for3, already_asked_for: new_already_asked_for}
@@ -208,7 +210,8 @@ defmodule WC.P2P.Connection do
 
   def handle_end_of_batch(block_hash, state = %{last_block_hash_in_batch: block_hash, socket: socket}) do
     # FIXME: send block locator
-    send_packet(socket, %P2PPacket{proc: :getblocks, extra_data: [InvItem.from_block_hash(block_hash)]})
+    # send_packet(socket, %P2PPacket{proc: :getblocks, extra_data: [block_hash]})
+    send_packet(socket, %P2PPacket{proc: :getblocks, extra_data: InventoryServer.get_block_locator()})
     %{state | last_block_hash_in_batch: nil}
   end
 

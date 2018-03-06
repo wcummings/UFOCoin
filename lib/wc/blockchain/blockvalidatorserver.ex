@@ -1,4 +1,4 @@
-# Serialize block validation, so we never validate the same block twice
+require Logger
 
 alias WC.Blockchain.Block, as: Block
 alias WC.Blockchain.BlockHeader, as: BlockHeader
@@ -7,6 +7,9 @@ alias WC.Blockchain.OrphanBlockTable, as: OrphanBlockTable
 alias WC.Blockchain.InventoryServer, as: InventoryServer
 
 defmodule WC.Blockchain.BlockValidatorServer do
+  @moduledoc """
+  Serialize block validation, so we never validate the same block twice
+  """
   use GenServer
 
   def start_link do
@@ -23,7 +26,8 @@ defmodule WC.Blockchain.BlockValidatorServer do
   end
 
   def handle_call({:validate_block, block = %Block{}}, _from, state) do
-    result = LogServer.get_block_by_hash(BlockHeader.hash(block.header))
+    block_hash = Block.hash(block)
+    result = LogServer.get_block_by_hash(block_hash)
     case result do
       {:ok, _block} ->
 	{:reply, {:error, :alreadyaccepted}, state}
@@ -32,6 +36,10 @@ defmodule WC.Blockchain.BlockValidatorServer do
 	  :ok ->
 	    LogServer.update(block)
 	    orphans = find_orphans(block)
+	    if length(orphans) > 0 do
+	      orphan_hashes = Enum.map(orphans, &Block.hash/1) |> Enum.map(&Base.encode16/1)
+	      Logger.info "Found orphans for #{Base.encode16(block_hash)}: #{inspect(orphan_hashes)}"
+	    end
 	    # Nested mnesia transactions
 	    :mnesia.transaction(fn ->
 	      Enum.each(orphans, fn _ -> :ok = LogServer.update(block) end) # NOTE: This is order sensitive

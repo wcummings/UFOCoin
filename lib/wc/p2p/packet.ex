@@ -116,7 +116,7 @@ defmodule WC.P2P.Packet do
   end
 
   def encode(%WC.P2P.Packet{proc: :getdata, extra_data: invitems}) do
-    [<<0x00, 0x10>>, invitems]
+    [<<0x00, 0x10>>, Enum.map(invitems, &InvItem.encode/1)]
   end
   
 end

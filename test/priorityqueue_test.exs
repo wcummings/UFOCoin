@@ -31,7 +31,7 @@ defmodule PriorityQueueTest do
     assert match?([:test], PriorityQueue.get(pq, ts+1))
     pq2 = PriorityQueue.delete(:test, pq)
     assert match?([], PriorityQueue.get(pq2, ts+1))
-    assert false = PriorityQueue.member?(:test)
+    assert not PriorityQueue.member?(pq2, :test)
   end
 
 end
