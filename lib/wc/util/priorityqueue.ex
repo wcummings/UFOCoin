@@ -2,17 +2,17 @@
 
 defmodule WC.Util.PriorityQueue do
   @moduledoc "Simple priority queue implementation w/ integer ranks."
-  @defstruct [:map, :set]
+  defstruct [:map, :set]
 
-  @opaque t :: %WC.Util.PriorityQueue{}
+  @opaque t :: %__MODULE__{}
 
-  def init do
-    %WC.Util.PriorityQueue{map: %{}, set: MapSet.new}
+  def new do
+    %__MODULE__{map: %{}, set: MapSet.new}
   end
 
   @spec insert(t, integer, term()) :: t
   def insert(pq, rank, item) do
-    %{pq | map: Map.update(pq.map, get_next_available_key(rank), item), set: MapSet.put(pq.set, item)}
+    %{pq | map: Map.put(pq.map, get_next_available_key(rank, pq.map), item), set: MapSet.put(pq.set, item)}
   end
 
   @spec member?(t, term()) :: true | false
@@ -23,6 +23,7 @@ defmodule WC.Util.PriorityQueue do
   @spec delete(term(), t) :: t
   def delete(item, pq) do
     if member?(pq, item) do
+      key = Map.keys(pq.map) |> Enum.find(fn key -> pq.map[key] == item end)
       %{pq | map: Map.delete(pq.map, key), set: MapSet.delete(pq.set, item)}
     else
       pq
@@ -33,7 +34,7 @@ defmodule WC.Util.PriorityQueue do
   def get(pq, max_rank) do
     Map.keys(pq.map)
     |> Enum.sort
-    |> Enum.filter(fn -> key < max_rank end)
+    |> Enum.filter(fn key -> key < max_rank end)
     |> Enum.map(fn key -> pq.map[key] end)
   end
 

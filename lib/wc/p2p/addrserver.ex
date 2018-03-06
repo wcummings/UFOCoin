@@ -42,7 +42,6 @@ defmodule WC.P2P.AddrServer do
   end
 
   def handle_info({:DOWN, ref, _, _, _}, state = %{addrs_by_ref: addrs_by_ref}) do
-    addr = addrs_by_ref[ref]
     addrs_by_ref = Map.delete(addrs_by_ref, ref)
     {:noreply, %{state | addrs_by_ref: addrs_by_ref}}
   end

@@ -135,7 +135,7 @@ defmodule WC.Blockchain.LogServer do
     {:reply, {:ok, tip}, state}
   end
 
-  def handle_call({:exists, block_hash}, state) do
+  def handle_call({:exists, block_hash}, _from, state) do
     case {BlockHashIndex.get_offset(block_hash), OrphanBlockTable.get(block_hash)} do
       {{:error, :notfound}, _} ->
 	{:reply, false, state}
