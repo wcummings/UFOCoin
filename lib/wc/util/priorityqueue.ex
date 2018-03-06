@@ -20,6 +20,7 @@ defmodule WC.Util.PriorityQueue do
     MapSet.member?(pq.set, item)
   end
 
+  # Different ordering for delete so it can be easily used as a reducer
   @spec delete(term(), t) :: t
   def delete(item, pq) do
     if member?(pq, item) do
