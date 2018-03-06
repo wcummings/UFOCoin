@@ -114,7 +114,8 @@ defmodule WC.P2P.Connection do
     case BlockValidatorServer.validate_block(block) do
       :ok ->
 	Logger.info "Block accepted: #{BlockHeader.pprint(block.header)}"
-	broadcast(%P2PPacket{proc: :inv, extra_data: [InvItem.from_block_hash(block_hash)]})
+	# Handled in LogServer
+	# broadcast(%P2PPacket{proc: :inv, extra_data: [InvItem.from_block_hash(block_hash)]})
 	handle_end_of_batch(block_hash, state)
       {:error, :alreadyaccepted} ->
 	handle_end_of_batch(block_hash, state)	
@@ -160,17 +161,22 @@ defmodule WC.P2P.Connection do
   def handle_packet(%P2PPacket{proc: :inv, extra_data: invitems}, state = %{socket: socket,
 									    asked_for: asked_for,
 									    already_asked_for: already_asked_for}) do
+    # Logger.info "Received inv request: #{inspect(Enum.map(invitems, fn invitem -> Base.encode16(invitem.hash) end))}"
     start_time = :os.system_time(:millisecond)
     {asked_for2, new_already_asked_for} = Enum.reduce(invitems, {asked_for, already_asked_for}, &ask_for/2)
     current_ts = :os.system_time(:millisecond)
-    invitems = PriorityQueue.get(asked_for2, current_ts)
-    |> Enum.filter(fn invitem -> not LogServer.exists?(invitem.hash) end)
+    invitems = PriorityQueue.get(asked_for2, current_ts+1)
+    # Logger.info "asked_for = #{inspect(asked_for)}"
+    # Logger.info "asked_for2 = #{inspect(asked_for2)}"
+    # Logger.info "current_ts = #{current_ts}"
+    # Logger.info "invitems = #{inspect(Enum.map(invitems, fn invitem -> Base.encode16(invitem.hash) end))}"
+    invitems |> Enum.filter(fn invitem -> not LogServer.exists?(invitem.hash) end)
     |> Enum.take(1) # FIXME: make configurable or something
-    asked_for3 = Enum.reduce(invitems, asked_for2, &PriorityQueue.delete/2)
-    end_time = :os.system_time(:millisecond)
     # Logger.debug "Built getdata batches in #{end_time - start_time}ms"
     if length(invitems) > 0 do
-      Logger.debug "Sending invitems: #{inspect(invitems)}"
+      asked_for3 = Enum.reduce(invitems, asked_for2, &PriorityQueue.delete/2)
+      # end_time = :os.system_time(:millisecond)
+      # Logger.debug "Sending getdata: #{inspect(Enum.map(invitems, fn invitem -> Base.encode16(invitem.hash) end))}"
       send_packet(socket, %P2PPacket{proc: :getdata, extra_data: invitems})
       %InvItem{type: :block, hash: last_block_hash_in_batch} = Enum.at(invitems, -1)
       %{state | last_block_hash_in_batch: last_block_hash_in_batch, asked_for: asked_for3, already_asked_for: new_already_asked_for}
@@ -180,6 +186,7 @@ defmodule WC.P2P.Connection do
   end
 
   def handle_packet(%P2PPacket{proc: :getdata, extra_data: invitems}, state = %{socket: socket}) do
+    # Logger.info "Received getdata request: #{inspect(Enum.map(invitems, fn invitem -> Base.encode16(invitem.hash) end))}"
     for invitem <- invitems do
       case LogServer.get_block_by_hash(invitem.hash) do
 	{:error, :notfound} ->

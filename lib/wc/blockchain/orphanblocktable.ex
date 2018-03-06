@@ -4,7 +4,7 @@ alias WC.Blockchain.BlockHeader, as: BlockHeader
 defmodule WC.Blockchain.OrphanBlockTable do
 
   def init do
-    :mnesia.create_table(OrphanBlockTable, [attributes: [:block_hash, :prev_block_hash, :block], index: [:prev_block_hash]])
+    :mnesia.create_table(OrphanBlockTable, [attributes: [:block_hash, :prev_block_hash, :block], index: [:prev_block_hash], type: :set])
   end
 
   @spec insert(Block.t) :: :ok | {:error, term}

@@ -38,7 +38,7 @@ defmodule WC.Miner.Worker do
     new_block = %{block | header: BlockHeader.decode(valid_block_header)}
     :ok = LogServer.update(new_block)
     # P2PConnection.broadcast(%P2PPacket{proc: :block, extra_data: new_block})
-    P2PConnection.broadcast(%P2PPacket{proc: :inv, extra_data: [InvItem.from_block_hash(Block.hash(new_block))]})
+    # P2PConnection.broadcast(%P2PPacket{proc: :inv, extra_data: [InvItem.from_block_hash(Block.hash(new_block))]})
   end
 
   def mine(block_header, target) when is_binary(block_header) do

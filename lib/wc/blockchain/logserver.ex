@@ -8,7 +8,10 @@ alias WC.Blockchain.Log, as: BlockchainLog
 alias WC.Blockchain.InventoryServer, as: InventoryServer
 alias WC.Blockchain.ChainState, as: ChainState
 alias WC.Blockchain.OrphanBlockTable, as: OrphanBlockTable
+alias WC.Blockchain.InvItem, as: InvItem
 alias WC.Miner.MinerServer, as: MinerServer
+alias WC.P2P.Packet, as: P2PPacket
+alias WC.P2P.Connection, as: P2PConnection
 
 defmodule WC.Blockchain.LogServer do
   use GenServer
@@ -171,12 +174,15 @@ defmodule WC.Blockchain.LogServer do
     offset = BlockchainLog.append_block(log, encoded_block)    
     :ok = BlockHashIndex.insert(block_hash, offset)
     :ok = PrevBlockHashIndex.insert(block.header.prev_block_hash, offset)
+    :ok = OrphanBlockTable.delete(block_hash) # Remove orphan entry, if one existed
 
     {:ok, new_tip} = update_chain_state(log, tip, block)
     if block == new_tip do
       # TODO: eventually use pub/sub for reorgs
+      Logger.info "New tip: #{Base.encode16(Block.hash(new_tip))}"
       :ok = MinerServer.new_block(block)
-      :ok = InventoryServer.getblocks()
+      # :ok = InventoryServer.getblocks()
+      P2PConnection.broadcast(%P2PPacket{proc: :inv, extra_data: [InvItem.from_block_hash(Block.hash(new_tip))]})
     end
 
     {:noreply, %{state | tip: new_tip}}

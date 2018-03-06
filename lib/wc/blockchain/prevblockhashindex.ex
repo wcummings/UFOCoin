@@ -8,6 +8,7 @@ defmodule WC.Blockchain.PrevBlockHashIndex do
 
   @spec insert(BlockHeader.block_hash, non_neg_integer()) :: term
   def insert(prev_block_hash, offset) do
+    # Include offset in key to dedupe
     {:atomic, result} = :mnesia.transaction(fn -> :mnesia.write({PrevBlockHashIndexTable, {prev_block_hash, offset}, offset}) end)
     result
   end
