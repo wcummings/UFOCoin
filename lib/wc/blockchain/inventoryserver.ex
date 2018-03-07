@@ -1,15 +1,10 @@
-alias WC.Blockchain.LogServer, as: LogServer
-alias WC.Blockchain.InvItem, as: InvItem
-alias WC.Blockchain.Block, as: Block
-alias WC.P2P.Connection, as: P2PConnection
-alias WC.P2P.Packet, as: P2PPacket
 require Logger
 
+alias WC.Blockchain.LogServer, as: LogServer
+alias WC.Blockchain.InvItem, as: InvItem
+alias WC.Blockchain.Block, as: Block
 alias WC.P2P.Connection, as: P2PConnection
 alias WC.P2P.Packet, as: P2PPacket
-alias WC.Blockchain.LogServer, as: LogServer
-alias WC.Blockchain.Block, as: Block
-alias WC.Blockchain.InvItem, as: InvItem
 
 defmodule WC.Blockchain.InventoryServer do
   use GenServer
