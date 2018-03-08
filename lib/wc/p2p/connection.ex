@@ -111,18 +111,11 @@ defmodule WC.P2P.Connection do
 
   def handle_packet(%P2PPacket{proc: :block, extra_data: block}, state) do
     block_hash = Block.hash(block)
-    case BlockValidatorServer.validate_block(block) do
-      :ok ->
-	Logger.info "Block accepted: #{BlockHeader.pprint(block.header)}"
-	# Handled in LogServer
-	# broadcast(%P2PPacket{proc: :inv, extra_data: [InvItem.from_block_hash(block_hash)]})
-	handle_end_of_batch(block_hash, state)
-      {:error, :alreadyaccepted} ->
-	handle_end_of_batch(block_hash, state)	
-      {:error, error} ->
-	Logger.warn "Block rejected, reason: #{inspect(error)}, #{BlockHeader.pprint(block.header)}"
-	state
-    end
+    :ok = BlockValidatorServer.validate_block(block)
+    # Handled in LogServer
+    # broadcast(%P2PPacket{proc: :inv, extra_data: [InvItem.from_block_hash(block_hash)]})
+    handle_end_of_batch(block_hash, state)
+    state
   end
 
   def handle_packet(%P2PPacket{proc: :ping}, state = %{socket: socket}) do

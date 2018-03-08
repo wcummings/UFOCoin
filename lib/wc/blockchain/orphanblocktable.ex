@@ -25,17 +25,17 @@ defmodule WC.Blockchain.OrphanBlockTable do
     end  
   end
 
-  @spec get_by_prev_block_hash(BlockHeader.block_hash) :: {:ok, Block.t} | {:error, :notfound}
+  @spec get_by_prev_block_hash(BlockHeader.block_hash) :: {:ok, list(Block.t)} | {:error, :notfound}
   def get_by_prev_block_hash(prev_block_hash) do
     {:atomic, result} = :mnesia.transaction(fn ->
       :mnesia.index_read(OrphanBlockTable, prev_block_hash, :prev_block_hash)
     end)
 
     case result do
-      [{OrphanBlockTable, _block_hash, _prev_block_hash, block}] ->
-	{:ok, block}
       [] ->
 	{:error, :notfound}
+      records ->
+	{:ok, Enum.map(records, fn {OrphanBlockTable, _block_hash, _prev_block_hash, block} -> block end)}
     end
   end
 

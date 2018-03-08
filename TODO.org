@@ -7,10 +7,12 @@
 * TODO Difficulty adjustment
 * DONE Exclude recipient from broadcast
   CLOSED: [2017-11-28 Tue 17:09]
-* TODO Inventory sync
+* DONE Inventory sync
+  CLOSED: [2018-03-08 Thu 14:59]
 * DONE Get rid of ranch as a dep
   CLOSED: [2017-11-28 Tue 15:56]
-* TODO Orphan handler
+* DONE Fix orphan handler
+  CLOSED: [2018-03-08 Thu 15:35]
 * DONE Un-used map in AddrServer
   CLOSED: [2017-11-29 Wed 16:25]
 * DONE Type for block header
@@ -27,5 +29,7 @@ For expiring keys in mnesia and shit like that
 * TODO Make tests not suck
 * TODO Repalce alias w/ import where appropriate
 * TODO Macro for size of functions returning binaries
-* TODO Convert mnesia tables to ets for safety
-
+* TODO Maybe convert mnesia tables to ets for safety?
+* TODO Batch block commands
+* TODO Get rid of inventory server
+* TODO Make block batch size >1 

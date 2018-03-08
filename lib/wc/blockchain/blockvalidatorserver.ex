@@ -18,70 +18,41 @@ defmodule WC.Blockchain.BlockValidatorServer do
 
   @spec validate_block(Block.t) :: :ok | {:error, Block.block_validation_error}
   def validate_block(block) do
-    GenServer.call(__MODULE__, {:validate_block, block})
+    GenServer.cast(__MODULE__, {:validate_block, block})
   end
 
   def init([]) do
     {:ok, %{}}
   end
 
-  def handle_call({:validate_block, block = %Block{}}, _from, state) do
+  def handle_cast({:validate_block, block = %Block{}}, state) do
     block_hash = Block.hash(block)
     result = LogServer.get_block_by_hash(block_hash)
     case result do
       {:ok, _block} ->
-	{:reply, {:error, :alreadyaccepted}, state}
+	{:noreply, state}	
       {:error, :notfound} ->
 	case Block.validate(block) do
 	  :ok ->
+	    Logger.info "Block accepted: #{BlockHeader.pprint(block.header)}"	    
 	    LogServer.update(block)
-	    orphans = find_orphans(block)
-	    if length(orphans) > 0 do
-	      orphan_hashes = Enum.map(orphans, &Block.hash/1) |> Enum.map(&Base.encode16/1)
-	      Logger.info "Found orphans for #{Base.encode16(block_hash)}: #{inspect(orphan_hashes)}"
+	    case OrphanBlockTable.get_by_prev_block_hash(block_hash) do
+	      {:ok, blocks} ->
+		Logger.info "Found orphan child blocks: #{inspect(Enum.map(blocks, &Block.hash/1) |> Enum.map(&Base.encode16/1))}"
+		Enum.each(blocks, &validate_block/1)
+		{:noreply, state}		
+	      {:error, :notfound} ->
+		{:noreply, state}
 	    end
-	  # Nested mnesia transactions
-	  {:atomic, :ok} = :mnesia.transaction(fn ->
-	      # FIXME: VALIDATE THESE
-	      Enum.each(orphans, fn orphan -> :ok = LogServer.update(orphan) end) # NOTE: This is order sensitive
-	      Enum.map(orphans, &Block.hash/1)
-	      |> Enum.each(&OrphanBlockTable.delete/1)
-	    end)
-	    {:reply, :ok, state}
-	{:error, :orphan} ->
+ 	  {:error, :orphan} ->
 	    # See Block.validate/1 in block.ex for details.
 	    :ok = OrphanBlockTable.insert(block)
 	    :ok = InventoryServer.getblocks()
-	    {:reply, {:error, :orphan}, state}
+	    {:noreply, state}
 	  {:error, error} ->
-	    {:reply, {:error, error}, state}
+	    Logger.warn "Block rejected, reason: #{inspect(error)}, #{BlockHeader.pprint(block.header)}"	    
+	    {:noreply, state}
 	end
-    end
-  end
-
-  def find_orphans(block) do
-    find_orphans(block, [])
-  end
-
-  def find_orphans(block, orphans) do
-    case OrphanBlockTable.get_by_prev_block_hash(Block.hash(block)) do
-      {:ok, parent_block} ->
-	# This would be a nice place to recurse to validate_block/1,
-	# if it weren't a genserver call
-	find_orphans(parent_block, [parent_block|orphans])
-      {:error, :notfound} ->
-	orphans
-    end    
-  end
-  
-  def find_orphans(block, orphans) do
-    case OrphanBlockTable.get_by_prev_block_hash(Block.hash(block)) do
-      {:ok, parent_block} ->
-	# This would be a nice place to recurse to validate_block/1,
-	# if it weren't a genserver call
-	find_orphans(parent_block, [parent_block|orphans])
-      {:error, :notfound} ->
-	orphans
     end
   end
   
