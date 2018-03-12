@@ -24,12 +24,12 @@ defmodule WC.P2P.ClientFSM do
     :gen_statem.start_link(__MODULE__, [], opts)
   end
 
-  def child_spec(opts) do
+  def child_spec([n]) do
     %{
-      id: __MODULE__,
+      id: String.to_atom(Atom.to_string(__MODULE__) <> Integer.to_string(n)), # Unique id's
       restart: :permanent,
       shutdown: 5000,
-      start: {__MODULE__, :start_link, [opts]},
+      start: {__MODULE__, :start_link, [[]]},
       type: :worker
     }
   end
@@ -44,7 +44,7 @@ defmodule WC.P2P.ClientFSM do
       {:ok, %P2PAddr{ip: ip, port: port}} ->
 	{:next_state, :connecting, %{data | ip: ip, port: port}, 0}
       {:error, :exhausted} ->
-	# Logger.debug "Not enough peers in database, waiting 10s before retrying..."
+	Logger.debug "Not enough peers in database, waiting 10s before retrying..."
 	Process.send_after(self(), :checkout, 10 * 1000)
 	{:keep_state, data}
     end

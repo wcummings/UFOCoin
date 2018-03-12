@@ -4,7 +4,8 @@ alias WC.P2P.Packet, as: P2PPacket
 defmodule WC.P2P.PingFSM do
   @behaviour :gen_statem
 
-  @ping_timeout 60 * 60 * 1000
+  # @ping_timeout 60 * 60 * 1000
+  @ping_timeout 1 * 60 * 1000
 
   def child_spec(_opts) do
     %{

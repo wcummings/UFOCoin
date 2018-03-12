@@ -73,8 +73,6 @@ defmodule WC do
     ip = Application.get_env(:wc, :ip)
     Logger.info "Listening on #{inspect(ip)}"
 
-    outbound_connections = Application.get_env(:wc, :outbound_connections)
-    for _ <- 1 .. outbound_connections, do: {:ok, _} = WC.P2P.ClientFSMSupervisor.start_client
     {:ok, pid}
   end
 

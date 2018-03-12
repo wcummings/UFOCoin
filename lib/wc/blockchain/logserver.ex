@@ -5,7 +5,6 @@ alias WC.Blockchain.PrevBlockHashIndex, as: PrevBlockHashIndex
 alias WC.Blockchain.BlockHeader, as: BlockHeader
 alias WC.Blockchain.Block, as: Block
 alias WC.Blockchain.Log, as: BlockchainLog
-alias WC.Blockchain.InventoryServer, as: InventoryServer
 alias WC.Blockchain.ChainState, as: ChainState
 alias WC.Blockchain.OrphanBlockTable, as: OrphanBlockTable
 alias WC.Blockchain.InvItem, as: InvItem
@@ -122,6 +121,47 @@ defmodule WC.Blockchain.LogServer do
     GenServer.call(__MODULE__, :index_complete)
   end
 
+  @doc "Build a list of block hashes from newest to genesis, dense to start, then sparse"
+  @spec get_block_locator() :: list(Block.block_hash)
+  def get_block_locator do
+    {:ok, tip} = get_tip()
+    get_block_locator(tip)
+  end
+  
+  def get_block_locator(tip) do
+    genesis_block_hash = Block.hash(WC.genesis_block)
+    dense_hashes = for block <- get_prev_blocks(10, tip), do: Block.hash(block)
+    if tip.header.height < 10 do
+      dense_hashes ++ [genesis_block_hash]
+    else
+      dense_hashes ++ get_prev_block_hashes_sparse(tip) ++ [genesis_block_hash]
+    end
+  end
+
+  def get_prev_block_hashes_sparse(tip) do
+    get_prev_block_hashes_sparse(tip, 1, 0, [])
+  end
+  
+  def get_prev_block_hashes_sparse(tip, step, count, acc) do
+    {:ok, block} = get_block_by_hash(tip.header.prev_block_hash)
+    if block.header.height == 0 do
+      acc
+    else
+      if count == step do
+	get_prev_block_hashes_sparse(block, step * 2, 0, [Block.hash(block)|acc])
+      else
+	get_prev_block_hashes_sparse(block, step, count + 1, acc)
+      end
+    end
+  end
+
+  def getblocks do
+    # Check that we don't spam the network during the initial indexing    
+    if index_complete?() do
+      :ok = P2PConnection.broadcast(%P2PPacket{proc: :getblocks, extra_data: get_block_locator()})
+    end
+  end
+  
   #
   # GENSERVER CALLBACKS
   #
@@ -172,7 +212,6 @@ defmodule WC.Blockchain.LogServer do
     block = Block.decode(encoded_block)
     block_hash = Block.hash(encoded_block)
     offset = BlockchainLog.append_block(log, encoded_block)
-    Logger.info "Inserted block: #{Base.encode16(Block.hash(encoded_block))} @ offset: #{offset}"
     :ok = BlockHashIndex.insert(block_hash, offset)
     :ok = PrevBlockHashIndex.insert(block.header.prev_block_hash, offset)
     :ok = OrphanBlockTable.delete(block_hash) # Remove orphan entry, if one existed
@@ -182,7 +221,6 @@ defmodule WC.Blockchain.LogServer do
       # TODO: eventually use pub/sub for reorgs
       # Logger.info "New tip: #{Base.encode16(Block.hash(new_tip))}"
       :ok = MinerServer.new_block(block)
-      # :ok = InventoryServer.getblocks()
       P2PConnection.broadcast(%P2PPacket{proc: :inv, extra_data: [InvItem.from_block_hash(Block.hash(new_tip))]})
     end
 
@@ -192,7 +230,8 @@ defmodule WC.Blockchain.LogServer do
   def handle_info({:index_complete, tip}, state) do
     Logger.info "Indexing complete: [tip: #{BlockHeader.pprint(tip.header)}]"
     # This might happen automagically
-    :ok = InventoryServer.getblocks()
+    # FIXME!!!
+    # :ok = P2PConnection.broadcast(%P2PPacket{proc: :getblocks, extra_data: get_block_locator()})
     :ok = MinerServer.new_block(tip)
     {:noreply, %{state | tip: tip, index_complete: true}}
   end

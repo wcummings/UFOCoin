@@ -2,7 +2,6 @@ require Logger
 
 alias WC.Blockchain.BlockValidatorServer, as: BlockValidatorServer
 alias WC.Blockchain.InvItem, as: InvItem
-alias WC.Blockchain.InventoryServer, as: InventoryServer
 alias WC.Blockchain.LogServer, as: LogServer
 alias WC.Blockchain.BlockHeader, as: BlockHeader
 alias WC.Blockchain.Block, as: Block
@@ -211,7 +210,7 @@ defmodule WC.P2P.Connection do
   def handle_end_of_batch(block_hash, state = %{last_block_hash_in_batch: block_hash, socket: socket}) do
     # FIXME: send block locator
     # send_packet(socket, %P2PPacket{proc: :getblocks, extra_data: [block_hash]})
-    send_packet(socket, %P2PPacket{proc: :getblocks, extra_data: InventoryServer.get_block_locator()})
+    send_packet(socket, %P2PPacket{proc: :getblocks, extra_data: LogServer.get_block_locator()})
     %{state | last_block_hash_in_batch: nil}
   end
 

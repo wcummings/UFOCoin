@@ -4,7 +4,6 @@ alias WC.Blockchain.Block, as: Block
 alias WC.Blockchain.BlockHeader, as: BlockHeader
 alias WC.Blockchain.LogServer, as: LogServer
 alias WC.Blockchain.OrphanBlockTable, as: OrphanBlockTable
-alias WC.Blockchain.InventoryServer, as: InventoryServer
 
 defmodule WC.Blockchain.BlockValidatorServer do
   @moduledoc """
@@ -47,7 +46,8 @@ defmodule WC.Blockchain.BlockValidatorServer do
  	  {:error, :orphan} ->
 	    # See Block.validate/1 in block.ex for details.
 	    :ok = OrphanBlockTable.insert(block)
-	    :ok = InventoryServer.getblocks()
+	    # :ok = InventoryServer.getblocks()
+	    :ok = LogServer.getblocks()
 	    {:noreply, state}
 	  {:error, error} ->
 	    Logger.warn "Block rejected, reason: #{inspect(error)}, #{BlockHeader.pprint(block.header)}"	    

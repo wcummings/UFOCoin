@@ -5,7 +5,7 @@ defmodule WC.P2P.Supervisor do
     Supervisor.start_link(__MODULE__, [], name: __MODULE__)
   end
 
-  def init([]) do
+  def init([]) do    
     children = [
       supervisor(WC.P2P.HandshakeSupervisor, []),
       supervisor(WC.P2P.ClientFSMSupervisor, []),

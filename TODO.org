@@ -31,5 +31,13 @@ For expiring keys in mnesia and shit like that
 * TODO Macro for size of functions returning binaries
 * TODO Maybe convert mnesia tables to ets for safety?
 * TODO Batch block commands
-* TODO Get rid of inventory server
+* DONE Get rid of inventory server
+  CLOSED: [2018-03-08 Thu 19:05]
 * TODO Make block batch size >1 
+* TODO Fix ping?
+* TODO Separate loggers into groups
+* TODO Possible bug w/ checking out addrs
+
+When clientfsms crashed, never fully came back, split network
+
+* TODO ClientFSMSup needs to start processes!!!!!
