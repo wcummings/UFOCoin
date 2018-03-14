@@ -158,16 +158,12 @@ defmodule WC.P2P.Connection do
     {asked_for2, new_already_asked_for} = Enum.reduce(invitems, {asked_for, already_asked_for}, &ask_for/2)
     current_ts = :os.system_time(:millisecond)
     invitems = PriorityQueue.get(asked_for2, current_ts+1)
-    # Logger.info "asked_for = #{inspect(asked_for)}"
-    # Logger.info "asked_for2 = #{inspect(asked_for2)}"
-    # Logger.info "current_ts = #{current_ts}"
-    # Logger.info "invitems = #{inspect(Enum.map(invitems, fn invitem -> Base.encode16(invitem.hash) end))}"
-    invitems |> Enum.filter(fn invitem -> not LogServer.exists?(invitem.hash) end)
+    |> Enum.filter(fn invitem -> not LogServer.exists?(invitem.hash) end)
     |> Enum.take(1) # FIXME: make configurable or something
+    # end_time = :os.system_time(:millisecond)
     # Logger.debug "Built getdata batches in #{end_time - start_time}ms"
     if length(invitems) > 0 do
       asked_for3 = Enum.reduce(invitems, asked_for2, &PriorityQueue.delete/2)
-      # end_time = :os.system_time(:millisecond)
       # Logger.debug "Sending getdata: #{inspect(Enum.map(invitems, fn invitem -> Base.encode16(invitem.hash) end))}"
       send_packet(socket, %P2PPacket{proc: :getdata, extra_data: invitems})
       %InvItem{type: :block, hash: last_block_hash_in_batch} = Enum.at(invitems, -1)
