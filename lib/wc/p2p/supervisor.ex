@@ -7,12 +7,12 @@ defmodule WC.P2P.Supervisor do
 
   def init([]) do    
     children = [
-      supervisor(WC.P2P.HandshakeSupervisor, []),
-      supervisor(WC.P2P.ClientFSMSupervisor, []),
-      supervisor(WC.P2P.ConnectionSupervisor, []),
-      supervisor(WC.P2P.PingFSMSupervisor, []),
       worker(WC.P2P.AddrServer, []),
-      {Registry, [keys: :duplicate, name: :connection_registry]}
+      supervisor(WC.P2P.HandshakeSupervisor, []),
+      {Registry, [keys: :duplicate, name: :connection_registry]},
+      supervisor(WC.P2P.ConnectionSupervisor, []),
+      supervisor(WC.P2P.PingFSMSupervisor, []),      
+      supervisor(WC.P2P.ClientFSMSupervisor, [])
     ]
 
     Supervisor.init(children, strategy: :one_for_one)

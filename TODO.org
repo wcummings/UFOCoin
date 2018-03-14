@@ -36,8 +36,13 @@ For expiring keys in mnesia and shit like that
 * TODO Make block batch size >1 
 * TODO Fix ping?
 * TODO Separate loggers into groups
-* TODO Possible bug w/ checking out addrs
+* DONE Possible bug w/ checking out addrs
+  CLOSED: [2018-03-14 Wed 17:10]
 
 When clientfsms crashed, never fully came back, split network
 
-* TODO ClientFSMSup needs to start processes!!!!!
+Was a bug w/ restarting clientfsms, no problem w/ addrserver
+
+* DONE ClientFSMSup needs to start processes!!!!!
+  CLOSED: [2018-03-14 Wed 17:09]
+* TODO Add node name to version message

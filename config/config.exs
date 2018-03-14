@@ -31,13 +31,11 @@ use Mix.Config
 
 config :wc,
   default_port: 9009,
-  internal_port: 9009,
   port: 9009,
-  enable_nat: false,
-  # ip: {127, 0, 0, 1},
+  ip: :local, # {:net, {:internal_port, 9009}} | {:ip, {192, 168, 0, 100}} | :local
   outbound_connections: 5,
   seed_dns: 'test1.wpc.io',
-  mining_proc_count: 1,
+  mining_processes: 1,
   # data_dir: "/var/wc/"
   data_dir: "."
 

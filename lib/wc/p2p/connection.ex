@@ -118,12 +118,12 @@ defmodule WC.P2P.Connection do
   end
 
   def handle_packet(%P2PPacket{proc: :ping}, state = %{socket: socket}) do
-    send_packet(socket, %P2PPacket{proc: :ping})
+    send_packet(socket, %P2PPacket{proc: :pong})
     state
   end
   
   def handle_packet(%P2PPacket{proc: :pong}, state = %{pingfsm: pingfsm}) do
-    P2PPingFSM.pong(pingfsm)
+    :ok = P2PPingFSM.pong(pingfsm)
     state
   end
 

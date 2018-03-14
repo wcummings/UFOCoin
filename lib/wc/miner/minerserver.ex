@@ -19,7 +19,7 @@ defmodule WC.Miner.MinerServer do
   end
   
   def init([]) do
-    proc_count = Application.get_env(:otc, :mining_proc_count, 1)
+    proc_count = Application.get_env(:wc, :mining_processes, 1)
     {:ok, %{@initial_state | proc_count: proc_count}}
   end
 
