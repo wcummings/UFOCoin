@@ -51,27 +51,11 @@ defmodule WC do
 
     for ip <- seed_nodes, do: WC.P2P.AddrTable.insert(%WC.P2P.Addr{ip: ip, port: default_port})
 
-    if Application.get_env(:wc, :ip) == :local do
-      Logger.info "No IP from UPnP or config, detecting local IP..."
-      ip = get_local_ipv4_address()
-      ip != nil
-      Application.put_env(:wc, :ip, ip)
-    end
+    get_ip()
     
     {:ok, pid} = WC.Supervisor.start_link
     port = Application.get_env(:wc, :port, default_port)
     :ranch.start_listener(make_ref(), :ranch_tcp, [{:port, port}], WC.P2P.Handshake, [])
-
-    # internal_port = Application.get_env(:wc, :internal_port)
-
-    # FIXME: this is all awful
-    # case UPnPServer.get_ip(internal_port, default_port) do
-    #   {:ok, ip_address, nat_context} ->
-    # 	{:ok, _} = Supervisor.start_child(pid, worker(UPnPServer, [nat_context, internal_port, default_port, 3600]))
-    # 	Application.put_env(:wc, :ip, ip_address)
-    #   {:error, error} ->
-    # 	Logger.info "UPnP failed: #{inspect(error)}"
-    # end
 
     ip = Application.get_env(:wc, :ip)
     Logger.info "Listening on #{inspect(ip)}"
@@ -106,6 +90,27 @@ defmodule WC do
 
   def base16_hashes(hashes) do
     Enum.map(hashes, &Base.encode16/1)
+  end
+
+  def get_ip do
+    case Application.get_env(:wc, :ip) do
+      :local ->
+	:ok
+	ip = get_local_ipv4_address()
+	ip != nil
+	Application.put_env(:wc, :ip, ip)
+      {:ip, ip} ->
+	Application.put_env(:wc, :ip, ip)
+      {:nat, opts} ->
+	case UPnPServer.get_ip(opts[:internal_port], opts[:external_port], 0) do
+	  {:ok, ip, _nat_context} ->
+	    Application.put_env(:wc, :ip, ip)
+	  _ ->
+	    ip = get_local_ipv4_address()
+	    ip != nil
+	    Application.put_env(:wc, :ip, ip)
+	end
+    end
   end
   
 end

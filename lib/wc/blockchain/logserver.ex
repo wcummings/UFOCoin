@@ -353,11 +353,13 @@ defmodule WC.Blockchain.LogServer do
 	  {:ok, parent} ->
 	    {:ok, [_|new_hashes]} = find_block_range(log, new_tip, parent)
 	    {:ok, [_|invalid_hashes]} = find_block_range(log, old_tip, parent)
-	    Logger.info "Chain updated:"
-	    Logger.info "Common parent: #{Block.hash(parent) |> Base.encode16}"
-	    Logger.info "Added hashes: #{inspect(Enum.map(new_hashes, &Base.encode16/1))}"
-	    Logger.info "Removed hashes: #{inspect(Enum.map(invalid_hashes, &Base.encode16/1))}"
-	    Logger.info "-------------------"
+	    if length(invalid_hashes) > 0 do
+	      Logger.info "Chain re-organized:"
+	      Logger.info "Common parent: #{Block.hash(parent) |> Base.encode16}"
+	      Logger.info "Added: #{inspect(Enum.map(new_hashes, &Base.encode16/1))}"
+	      Logger.info "Removed: #{inspect(Enum.map(invalid_hashes, &Base.encode16/1))}"
+	      Logger.info "-------------------"
+	    end
 	    for hash <- invalid_hashes, do: :ok = ChainState.update_longest(hash, false)
 	    for hash <- new_hashes, do: :ok = ChainState.update_longest(hash, true)
 	    {:ok, new_tip}

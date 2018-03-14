@@ -32,7 +32,7 @@ use Mix.Config
 config :wc,
   default_port: 9009,
   port: 9009,
-  ip: :local, # {:net, {:internal_port, 9009}} | {:ip, {192, 168, 0, 100}} | :local
+  ip: :local, # {:nat, %{internal_port: 9009, external_port: 9009}} | {:ip, {192, 168, 0, 100}} | :local
   outbound_connections: 5,
   seed_dns: 'test1.wpc.io',
   mining_processes: 1,
@@ -40,7 +40,9 @@ config :wc,
   data_dir: "."
 
 config :logger, :console,
-  format: "$time $metadata[$level] $levelpad$message\n",
-  metadata: [:module, :function, :line],
-#level: :info
+  # format: "$time $metadata[$level] $levelpad$message\n",
+  format: "$time $levelpad$message\n",
+  # metadata: [:module, :function, :line],
+  #level: :info
   level: :debug
+
