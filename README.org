@@ -1,11 +1,10 @@
 * WhipCash
 
-[[https://github.com/wcummings/OTC/blob/master/fault_tolerance.png]]
+[[https://github.com/wcummings/WhipCash/blob/master/fault_tolerance.png]]
 
 ** What (barely) works
 
    - [X] Peer discovery
-   - [X] Broadcast
    - [X] Mining empty blocks
    - [X] Append-only block store + indices
    - [X] Block propagation
@@ -13,3 +12,24 @@
    - [ ] Key management
    - [ ] TX signing etc.
    - [ ] Everything else
+
+** Building
+
+Build w/ mix:
+
+#+begin_src bash
+mix release --env=prod
+#+end_src
+
+Currently everything is configured through configs.exs.
+
+** Docker
+
+I've included docker and docker-compose configs, so you can run a testnet locally. The compose config will spin up 6 identical
+instances, one which matches an address in my test seed DNS: test1.wpc.io. If you don't modify the seed DNS you risk getting
+some bad peers but it shouldn't really matter if they cross-polinate, your nodes might just take longer to connect.
+
+#+begin_src bash
+sudo docker-compose build
+sudo docker-compose up
+#+end_src
