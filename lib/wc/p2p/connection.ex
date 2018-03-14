@@ -20,6 +20,8 @@ defmodule WC.P2P.Connection do
 		   already_asked_for: %{},
 		   last_block_hash_in_batch: nil}
 
+  @block_batch_size 500
+  
   def child_spec(_opts) do
     %{
       id: __MODULE__,
@@ -159,7 +161,7 @@ defmodule WC.P2P.Connection do
     current_ts = :os.system_time(:millisecond)
     invitems = PriorityQueue.get(asked_for2, current_ts+1)
     |> Enum.filter(fn invitem -> not LogServer.exists?(invitem.hash) end)
-    |> Enum.take(1) # FIXME: make configurable or something
+    |> Enum.take(@block_batch_size)
     # end_time = :os.system_time(:millisecond)
     # Logger.debug "Built getdata batches in #{end_time - start_time}ms"
     if length(invitems) > 0 do
