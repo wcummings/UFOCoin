@@ -166,6 +166,10 @@ defmodule WC.Blockchain.LogServer do
   # GENSERVER CALLBACKS
   #
 
+  def handle_call(:index_complete, _from, state = %{index_complete: index_complete}) do
+    {:reply, index_complete, state}
+  end
+  
   def handle_call(_, _, state = %{index_complete: false}) do
     {:reply, {:error, :index_incomplete}, state}
   end
@@ -194,10 +198,6 @@ defmodule WC.Blockchain.LogServer do
   
   def handle_call({:is_in_longest_chain, block_hash}, _from, state) do
     {:reply, is_in_longest_chain(block_hash), state}
-  end
-
-  def handle_call(:index_complete, _from, state = %{index_complete: index_complete}) do
-    {:reply, index_complete, state}
   end
 
   def handle_call({:find_first_block_hash_in_longest_chain, block_hashes}, _from, state) do
