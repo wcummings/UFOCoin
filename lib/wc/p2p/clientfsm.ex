@@ -57,7 +57,9 @@ defmodule WC.P2P.ClientFSM do
       {:error, error} ->
 	Logger.error "#{inspect(ip)}:#{port}: Connection error: #{inspect(error)}"
 	if data.retries > 3 do # TODO: make this configurable
-	  {:next_state, :checkout_addr, @initial_state, 0}
+	  # TODO: handle error properly
+	  # {:next_state, :checkout_addr, @initial_state, 0}
+	  {:stop, :normal}
 	else
 	  {:next_state, :connecting, %{data | retries: data.retries + 1}, 10 * 1000}
 	end

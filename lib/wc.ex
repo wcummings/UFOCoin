@@ -51,7 +51,7 @@ defmodule WC do
 
     for ip <- seed_nodes, do: WC.P2P.AddrTable.insert(%WC.P2P.Addr{ip: ip, port: default_port})
 
-    get_ip()
+    Application.put_env(:wc, :ip, get_ip())
     
     {:ok, pid} = WC.Supervisor.start_link
     port = Application.get_env(:wc, :port, default_port)
@@ -96,19 +96,16 @@ defmodule WC do
     case Application.get_env(:wc, :ip) do
       :local ->
 	:ok
-	ip = get_local_ipv4_address()
-	ip != nil
-	Application.put_env(:wc, :ip, ip)
+	get_local_ipv4_address()
       {:ip, ip} ->
-	Application.put_env(:wc, :ip, ip)
+	ip
       {:nat, opts} ->
 	case UPnPServer.get_ip(opts[:internal_port], opts[:external_port], 0) do
 	  {:ok, ip, _nat_context} ->
-	    Application.put_env(:wc, :ip, ip)
+	    ip
 	  _ ->
 	    ip = get_local_ipv4_address()
-	    ip != nil
-	    Application.put_env(:wc, :ip, ip)
+	    ip
 	end
     end
   end

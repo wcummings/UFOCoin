@@ -161,7 +161,7 @@ defmodule WC.Blockchain.LogServer do
       :ok = P2PConnection.broadcast(%P2PPacket{proc: :getblocks, extra_data: get_block_locator()})
     end
   end
-  
+
   #
   # GENSERVER CALLBACKS
   #
