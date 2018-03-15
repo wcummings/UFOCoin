@@ -7,7 +7,7 @@
    - [X] Peer discovery
    - [X] Mining empty blocks
    - [X] Append-only block store + indices
-   - [X] Block propagation
+   - [X] Block propagation/validation
    - [X] UPnP
    - [ ] Key management
    - [ ] TX signing etc.

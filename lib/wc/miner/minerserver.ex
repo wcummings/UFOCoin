@@ -8,7 +8,7 @@ require Logger
 defmodule WC.Miner.MinerServer do
   use GenServer
 
-  @initial_state %{pids: [], proc_count: nil}
+  @initial_state %{pids: [], mining_processes: nil}
   
   def start_link do
     GenServer.start_link(__MODULE__, [], name: __MODULE__)
@@ -19,16 +19,20 @@ defmodule WC.Miner.MinerServer do
   end
   
   def init([]) do
-    proc_count = Application.get_env(:wc, :mining_processes, 1)
-    {:ok, %{@initial_state | proc_count: proc_count}}
+    minig_processes = Application.get_env(:wc, :mining_processes, 1)
+    if LogServer.index_complete? do
+      {:ok, tip} = LogServer.get_tip()
+      :ok = new_block(tip)
+    end
+    {:ok, %{@initial_state | mining_processes: minig_processes}}
   end
 
-  def handle_cast({:new_block, tip}, state = %{pids: pids, proc_count: proc_count}) do
+  def handle_cast({:new_block, tip}, state = %{pids: pids, mining_processes: mining_processes}) do
     for pid <- pids, do: MinerWorker.stop(pid)
     new_block = Block.next_block(tip)
     Logger.info "Mining new block #{BlockHeader.pprint(new_block.header)}"
     # TODO: get tx's for new block from mempool
-    new_pids = Enum.map(1 .. proc_count, fn _ ->
+    new_pids = Enum.map(1 .. mining_processes, fn _ ->
       {:ok, pid} = WorkerSupervisor.start_child(new_block)
       pid
     end)

@@ -49,7 +49,7 @@ defmodule WC.Miner.Worker do
 	receive do
 	  :stop ->
 	    exit(:normal)
-	after 1000 ->
+	after 100 ->
 	    mine(BlockHeader.update_nonce(block_header, :crypto.strong_rand_bytes(4)), target)
 	end
     end
