@@ -60,12 +60,12 @@ defmodule WC.Blockchain.LogServer do
     GenServer.cast(__MODULE__, {:update, block})
   end
 
-  @spec exists?(Block.block_hash) :: true | false
+  @spec exists?(BlockHeader.block_hash) :: true | false
   def exists?(block_hash) do
     GenServer.call(__MODULE__, {:exists, block_hash})
   end
   
-  @spec get_next_block_hashes_in_chain(non_neg_integer, Block.block_hash) :: list(Block.block_hash)
+  @spec get_next_block_hashes_in_chain(non_neg_integer, BlockHeader.block_hash) :: list(BlockHeader.block_hash)
   def get_next_block_hashes_in_chain(number_of_blocks, starting_block_hash) do
     Enum.reverse(get_next_block_hashes_in_chain(number_of_blocks, starting_block_hash, []))
   end
@@ -89,7 +89,7 @@ defmodule WC.Blockchain.LogServer do
     end
   end
 
-  @spec find_first_block_hash_in_longest_chain(list(Block.block_hash)) :: {:ok, Block.t} | {:error, :notfound}
+  @spec find_first_block_hash_in_longest_chain(list(BlockHeader.block_hash)) :: {:ok, BlockHeader.block_hash} | {:error, :notfound}
   def find_first_block_hash_in_longest_chain(block_hash) do
     GenServer.call(__MODULE__, {:find_first_block_hash_in_longest_chain, block_hash})
   end
@@ -122,7 +122,7 @@ defmodule WC.Blockchain.LogServer do
   end
 
   @doc "Build a list of block hashes from newest to genesis, dense to start, then sparse"
-  @spec get_block_locator() :: list(Block.block_hash)
+  @spec get_block_locator() :: list(BlockHeader.block_hash)
   def get_block_locator do
     {:ok, tip} = get_tip()
     get_block_locator(tip)
@@ -179,15 +179,16 @@ defmodule WC.Blockchain.LogServer do
   end
 
   def handle_call({:exists, block_hash}, _from, state) do
-    case {BlockHashIndex.get_offset(block_hash), OrphanBlockTable.get(block_hash)} do
-      {{:error, :notfound}, _} ->
+    case BlockHashIndex.get_offset(block_hash) do
+      {:ok, _} ->
+	case OrphanBlockTable.get(block_hash) do
+	  {:ok, _} ->
+	    {:reply, true, state}
+	  {:error, :notfound} ->
+	    {:reply, false, state}
+	end
+      {:error, :notfound} ->
 	{:reply, false, state}
-      {_, {:error, :notfound}} ->
-	{:reply, false, state}
-      {_, {:ok, _}} ->
-	{:reply, true, state}
-      {{:ok, _}, _} ->
-	{:reply, true, state}
     end
   end
   
@@ -264,7 +265,7 @@ defmodule WC.Blockchain.LogServer do
     end
   end
 
-  @spec find_block_range(BlockchainLog.t, Block.t, Block.t) :: list(BlockHeader.block_hash)
+  @spec find_block_range(BlockchainLog.t, Block.t, Block.t) :: {:ok, list(BlockHeader.block_hash)} | {:error, {:notfound, BlockHeader.block_hash}}
   def find_block_range(log, starting_block, ending_block) do
     find_block_range(log, starting_block, ending_block, [Block.hash(starting_block)])
   end

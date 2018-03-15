@@ -19,7 +19,7 @@ defmodule WC.Blockchain.InvItem do
     %WC.Blockchain.InvItem{type: :block, hash: block_hash}
   end
 
-  @spec from_block_hash(Block.block_hash) :: t
+  @spec from_block_hash(BlockHeader.block_hash) :: t
   def from_block_hash(block_hash) do
     %WC.Blockchain.InvItem{type: :block, hash: block_hash}
   end

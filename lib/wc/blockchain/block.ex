@@ -8,7 +8,7 @@ defmodule WC.Blockchain.Block do
   @enforce_keys [:header, :txs]
   defstruct [:header, :txs]
 
-  @type block_validation_error :: :notfound | :orphan | :badheight | :alreadyaccepted
+  @type block_validation_error :: :notfound | :orphan | :badheight | :alreadyaccepted | :baddifficulty
   @type encoded_block :: binary
   @type t :: %WC.Blockchain.Block{header: BlockHeader.t, txs: list(TX.t)}
 
@@ -45,7 +45,7 @@ defmodule WC.Blockchain.Block do
     %WC.Blockchain.Block{header: block_header, txs: []}
   end
 
-  @spec equal?(Block.t, Block.t) :: true | false
+  @spec equal?(t, t) :: true | false
   def equal?(block1, block2) do
     Map.equal?(block1, block2)
   end

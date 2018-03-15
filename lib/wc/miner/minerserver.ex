@@ -1,5 +1,6 @@
 alias WC.Blockchain.Block, as: Block
 alias WC.Blockchain.BlockHeader, as: BlockHeader
+alias WC.Blockchain.LogServer, as: LogServer
 alias WC.Miner.WorkerSupervisor, as: WorkerSupervisor
 alias WC.Miner.Worker, as: MinerWorker
 
