@@ -15,6 +15,12 @@
 
 ** Building
 
+Run the type-checker ([[http://erlang.org/doc/man/dialyzer.html][dialyzer]]):
+
+#+begin_src bash
+mix dialyzer
+#+end_src
+
 Build w/ mix:
 
 #+begin_src bash

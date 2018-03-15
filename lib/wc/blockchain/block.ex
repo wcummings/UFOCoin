@@ -82,7 +82,7 @@ defmodule WC.Blockchain.Block do
 
   def check_difficulty(block) do
     difficulty = get_difficulty(block)
-    if block.header.difficulty == difficulty do
+    if block.header.difficulty >= difficulty do
       :ok
     else
       {:error, :baddifficulty}
