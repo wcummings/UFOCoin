@@ -99,8 +99,8 @@ defmodule WC do
 	get_local_ipv4_address()
       {:ip, ip} ->
 	ip
-      {:nat, opts} ->
-	case UPnPServer.get_ip(opts[:internal_port], opts[:external_port], 0) do
+      {:nat, external_port} ->
+	case UPnPServer.get_ip(Application.get_env(:wc, :port), external_port, 0) do
 	  {:ok, ip, _nat_context} ->
 	    ip
 	  _ ->
