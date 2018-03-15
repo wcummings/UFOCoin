@@ -62,6 +62,7 @@ defmodule WC.P2P.Connection do
     {:ok, _} = Registry.register(:connection_registry, "connection", [])
     {:ok, pid} = P2PPingFSMSupervisor.start_child(self())
     :true = Process.link(pid)
+    _ref = Process.send_after(self(), :expire_already_asked_for, 10 * 1000)
     {:ok, %{@initial_state | socket: socket, pingfsm: pid}}
   end
 
@@ -80,6 +81,16 @@ defmodule WC.P2P.Connection do
   def handle_info({:tcp_closed, socket}, state = %{socket: socket}) do
     :gen_tcp.close(socket)
     {:stop, :disconnected, state}
+  end
+
+  def handle_info(:expire_already_asked_for, state = %{already_asked_for: already_asked_for}) do
+    current_ts = :os.system_time(:millsecond)
+    new_already_asked_for = Enum.filter(already_asked_for, fn
+      {k, v} when v < current_ts - 2 * 60 * 1000 -> false;
+      _ -> true
+    end)
+    _ref = Process.send_after(self(), :expire_already_asked_for, 10 * 1000)
+    {:noreply, %{state | already_asked_for: new_already_asked_for}}
   end
 
   def handle_packet(%P2PPacket{proc: :getaddrs}, state = %{socket: socket}) do
