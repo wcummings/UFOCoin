@@ -84,6 +84,8 @@ defmodule WC.P2P.Connection do
   end
 
   def handle_info(:flush_asked_for, state = %{asked_for: asked_for, already_asked_for: already_asked_for, socket: socket}) do
+    # Enum.filter(already_asked_for, fn {k, v} -> 
+    
     # # Expire already_asked_for keys
     # new_already_asked_for = Enum.filter(already_asked_for, fn
     #   {k, v} when v < current_ts - 2 * 60 * 1000 -> false;

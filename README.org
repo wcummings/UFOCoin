@@ -9,6 +9,8 @@
    - [X] Append-only block store + indices
    - [X] Block propagation/validation
    - [X] UPnP
+   - [ ] "Headers only" sync
+   - [ ] Automatic checkpointing/"must be this high" limit
    - [ ] Key management
    - [ ] TX signing etc.
    - [ ] Everything else
