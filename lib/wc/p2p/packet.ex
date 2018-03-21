@@ -7,7 +7,7 @@ defmodule WC.P2P.Packet do
   @enforce_keys [:proc]
   defstruct proc: nil, extra_data: []
 
-  @type encoded_packet :: binary()
+  @type encoded_packet :: binary
   @type version_p2p_packet :: %WC.P2P.Packet{proc: :version}
   @type versionack_p2p_packet :: %WC.P2P.Packet{proc: :versionack}
   @type addr_p2p_packet :: %WC.P2P.Packet{proc: :addr, extra_data: list(P2PAddr.t)}

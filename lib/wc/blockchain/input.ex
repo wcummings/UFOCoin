@@ -5,13 +5,14 @@ defmodule WC.Blockchain.Input do
   @type t :: %__MODULE__{}
   @type encoded_input :: binary
 
-  @spec sign(t, binary) :: t
-  def sign(%__MODULE__{tx_hash: <<tx_hash :: binary - size(32)>>,
-		       offset: offset,
-		       pubkey: <<pubkey :: binary - size(32)>>} = input, privkey) do
-    input_without_sig = <<tx_hash :: binary, offset :: size(8), pubkey :: binary>>
-    %{input | signature: :crypto.sign(:rsa, :rsa_digest_type, input_without_sig, privkey)}
-  end
+  # @spec sign(t, binary) :: t
+  # def sign(%__MODULE__{tx_hash: <<tx_hash :: binary - size(32)>>,
+  # 		       offset: offset,
+  # 		       pubkey: <<pubkey :: binary - size(32)>>} = input, privkey) do
+  #   # input_without_sig = <<tx_hash :: binary, offset :: size(8), pubkey :: binary>>
+  #   # %{input | signature: :crypto.sign(:rsa, :rsa_digest_type, input_without_sig, privkey)}
+  #   # FIXME: signed w/ contents of full transaction
+  # end
 
   @spec encode(t) :: encoded_input
   def encode(%__MODULE__{tx_hash: <<tx_hash :: binary - size(32)>>,
@@ -29,12 +30,4 @@ defmodule WC.Blockchain.Input do
     %__MODULE__{tx_hash: tx_hash, offset: offset, pubkey: pubkey, signature: signature}
   end
 
-  @spec coinbase :: t
-  def coinbase do
-    %__MODULE__{tx_hash: <<0 :: size(256)>>,
-		offset: 0,
-		pubkey: <<0 :: size(256)>>,
-		signature: <<0 :: binary - size(256)>>}
-  end
-  
 end
