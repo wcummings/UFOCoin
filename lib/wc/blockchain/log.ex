@@ -4,32 +4,32 @@ defmodule WC.Blockchain.Log do
   @enforce_keys [:file, :path]
   defstruct [:file, :path]
 
-  @opaque t :: %WC.Blockchain.Log{}
+  @opaque t :: %__MODULE__{}
 
-  @spec init() :: {:ok, WC.Blockchain.Log.t} | {:error, :_}
+  @spec init() :: {:ok, __MODULE__.t} | {:error, :_}
   def init do
     data_dir = Application.get_env(:wc, :data_dir)
     init(Path.join([data_dir, "blocks.dat"]))
   end
   
-  @spec init(String.t) :: {:ok, WC.Blockchain.Log.t} | {:error, :_}
+  @spec init(String.t) :: {:ok, t} | {:error, :_}
   def init(path) do
     case :file.open(path, [:read, :append, :binary, :raw]) do
       {:ok, file} ->
-	{:ok, %WC.Blockchain.Log{file: file, path: path}}
+	{:ok, %__MODULE__{file: file, path: path}}
       {:error, error} ->
 	{:error, error}
     end
   end
 
-  @spec is_empty?(WC.Blockchain.Log.t) :: true | false
-  def is_empty?(%WC.Blockchain.Log{file: file}) do
+  @spec is_empty?(t) :: true | false
+  def is_empty?(%__MODULE__{file: file}) do
     {:ok, offset} = :file.position(file, :eof)
     offset == 0
   end
   
-  @spec read_block(WC.Blockchain.Log.t, non_neg_integer()) :: {:ok, {binary(), non_neg_integer()}} | {:error, :eof}
-  def read_block(%WC.Blockchain.Log{file: file}, offset) do
+  @spec read_block(t, non_neg_integer()) :: {:ok, {binary(), non_neg_integer()}} | {:error, :eof}
+  def read_block(%__MODULE__{file: file}, offset) do
     {:ok, ^offset} = :file.position(file, offset)
     # Read 4 byte length prefix
     case :file.pread(file, offset, 4) do
@@ -43,10 +43,10 @@ defmodule WC.Blockchain.Log do
     end
   end
 
-  @spec append_block(WC.Blockchain.Log.t, binary()) :: non_neg_integer()
-  def append_block(%WC.Blockchain.Log{file: file}, encoded_block) do
+  @spec append_block(t, binary()) :: non_neg_integer()
+  def append_block(%__MODULE__{file: file}, encoded_block) do
     {:ok, offset} = :file.position(file, :eof)
-    :ok = :file.write(file, encode_length(byte_size(encoded_block)) <> encoded_block)
+    :ok = :file.write(file, [encode_length(:erlang.iolist_size(encoded_block)), encoded_block])
     offset
   end
 
