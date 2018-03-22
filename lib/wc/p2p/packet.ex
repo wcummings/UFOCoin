@@ -3,7 +3,7 @@ alias WC.Blockchain.Block, as: Block
 alias WC.Blockchain.BlockHeader, as: BlockHeader
 alias WC.Blockchain.InvItem, as: InvItem
 
-defmodule __MODULE__ do
+defmodule WC.P2P.Packet do
   @enforce_keys [:proc]
   defstruct proc: nil, extra_data: []
 
