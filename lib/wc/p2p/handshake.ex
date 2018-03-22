@@ -16,8 +16,8 @@ defmodule WC.P2P.Handshake do
   # TODO: use one value in handshake.ex and clientfsm.ex
   @handshake_timeout_ms 10000
   
-  @socket_opts [:binary, packet: 4, active: :once]
-
+  @socket_opts [:binary, packet: 4, active: :once, packet_size: 1000000]
+  
   def start_link(ref, socket, transport, _opts) do
     pid = :proc_lib.spawn_link(__MODULE__, :init, [ref, socket, transport])
     {:ok, pid}

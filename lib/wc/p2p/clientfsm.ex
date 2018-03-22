@@ -19,7 +19,7 @@ defmodule WC.P2P.ClientFSM do
   @handshake_timeout_ms 10000
 
   @socket_opts [:binary, packet: 4, active: :once]
-  
+
   def start_link(opts) do
     :gen_statem.start_link(__MODULE__, [], opts)
   end
