@@ -29,8 +29,9 @@ defmodule WC.P2P.Packet do
     %WC.P2P.Packet{proc: :versionack}
   end
 
-  def decode(<<0x00, 0x03, addr_list :: binary>>) do
-    %WC.P2P.Packet{proc: :addr, extra_data: decode_addr_list(addr_list)}
+  def decode(<<0x00, 0x03, addrs :: binary>>) do
+    addrs = for <<addr :: binary-size(6) <- addrs>>, do: P2PAddr.decode(addr)
+    %WC.P2P.Packet{proc: :addr, extra_data: addrs}
   end
 
   def decode(<<0x00, 0x04>>) do
@@ -50,33 +51,20 @@ defmodule WC.P2P.Packet do
   end
 
   def decode(<<0x00, 0x08, invitems :: binary>>) do
-    invitems = for <<invitem :: binary - size(33) <- invitems>>, do: InvItem.decode(invitem)
+    invitems = for <<invitem :: binary-size(33) <- invitems>>, do: InvItem.decode(invitem)
     %WC.P2P.Packet{proc: :inv, extra_data: invitems}
   end
 
   def decode(<<0x00, 0x09, block_hashes :: binary>>) do
-    block_hashes = for <<bh :: binary - size(32) <- block_hashes>>, do: bh
+    block_hashes = for <<bh :: binary-size(32) <- block_hashes>>, do: bh
     %WC.P2P.Packet{proc: :getblocks, extra_data: block_hashes}
   end
 
   def decode(<<0x00, 0x10, invitems :: binary>>) do
-      invitems = for <<invitem :: binary - size(33) <- invitems>>, do: InvItem.decode(invitem)
+      invitems = for <<invitem :: binary-size(33) <- invitems>>, do: InvItem.decode(invitem)
       %WC.P2P.Packet{proc: :getdata, extra_data: invitems}
   end
   
-  def decode_addr_list(bin) do
-    decode_addr_list(bin, [])
-  end
-
-  # FIXME: size(6) = size of P2PAddr.encode/1 output, can handle this with a macro
-  def decode_addr_list(<<addr :: binary - size(6), rest :: binary>>, acc) do
-    decode_addr_list(rest, [P2PAddr.decode(addr)|acc])
-  end
-  
-  def decode_addr_list(<<>>, acc) do
-    acc
-  end
-
   @spec encode(t) :: encoded_packet
   def encode(%WC.P2P.Packet{proc: :version, extra_data: version}) do
     <<0x00, 0x01, version :: binary>>
