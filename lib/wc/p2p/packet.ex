@@ -21,7 +21,7 @@ defmodule WC.P2P.Packet do
   @type t :: ping_p2p_packet | pong_p2p_packet | getaddrs_p2p_packet | addr_p2p_packet | version_p2p_packet | versionack_p2p_packet | block_p2p_packet | inv_p2p_packet | getblocks_p2p_packet | getdata_p2p_packet
 
   @spec decode(encoded_packet) :: t
-  def decode(<<0x00, 0x01, version :: binary>>) do
+  def decode(<<0x00, 0x01, length :: size(8), version :: binary-size(length)>>) do
     %__MODULE__{proc: :version, extra_data: version}
   end
 
@@ -67,7 +67,9 @@ defmodule WC.P2P.Packet do
   
   @spec encode(t) :: encoded_packet
   def encode(%__MODULE__{proc: :version, extra_data: version}) do
-    <<0x00, 0x01, version :: binary>>
+    [<<0x00, 0x01>>,
+     <<:erlang.iolist_size(version) :: size(8)>>,
+     <<version :: binary>>]
   end
 
   def encode(%__MODULE__{proc: :versionack}) do
