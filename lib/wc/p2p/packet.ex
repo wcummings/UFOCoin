@@ -29,7 +29,7 @@ defmodule WC.P2P.Packet do
     %__MODULE__{proc: :versionack}
   end
 
-  def decode(<<0x00, 0x03, addrs :: binary>>) do
+  def decode(<<0x00, 0x03, length :: size(16), addrs :: binary-size(length)>>) do
     addrs = for <<addr :: binary-size(6) <- addrs>>, do: P2PAddr.decode(addr)
     %__MODULE__{proc: :addr, extra_data: addrs}
   end
@@ -46,21 +46,21 @@ defmodule WC.P2P.Packet do
     %__MODULE__{proc: :pong}
   end
 
-  def decode(<<0x00, 0x07, encoded_block :: binary>>) do
+  def decode(<<0x00, 0x07, length :: size(32), encoded_block :: binary-size(length)>>) do
     %__MODULE__{proc: :block, extra_data: Block.decode(encoded_block)}
   end
 
-  def decode(<<0x00, 0x08, invitems :: binary>>) do
+  def decode(<<0x00, 0x08, length :: size(16), invitems :: binary-size(length)>>) do
     invitems = for <<invitem :: binary-size(33) <- invitems>>, do: InvItem.decode(invitem)
     %__MODULE__{proc: :inv, extra_data: invitems}
   end
 
-  def decode(<<0x00, 0x09, block_hashes :: binary>>) do
+  def decode(<<0x00, 0x09, length :: size(32), block_hashes :: binary-size(length)>>) do
     block_hashes = for <<bh :: binary-size(32) <- block_hashes>>, do: bh
     %__MODULE__{proc: :getblocks, extra_data: block_hashes}
   end
 
-  def decode(<<0x00, 0x10, invitems :: binary>>) do
+  def decode(<<0x00, 0x10, length :: size(16), invitems :: binary-size(length)>>) do
       invitems = for <<invitem :: binary-size(33) <- invitems>>, do: InvItem.decode(invitem)
       %__MODULE__{proc: :getdata, extra_data: invitems}
   end
@@ -75,7 +75,10 @@ defmodule WC.P2P.Packet do
   end
 
   def encode(%__MODULE__{proc: :addr, extra_data: addrs}) do
-    [<<0x00, 0x03>>, Enum.map(addrs, &P2PAddr.encode/1)]
+    encoded_addrs = Enum.map(addrs, &P2PAddr.encode/1)
+    [<<0x00, 0x03>>,
+     <<:erlang.iolist_size(encoded_addrs) :: size(16)>>,
+     encoded_addrs]
   end
 
   def encode(%__MODULE__{proc: :getaddrs}) do
@@ -92,19 +95,29 @@ defmodule WC.P2P.Packet do
 
   def encode(%__MODULE__{proc: :block, extra_data: block}) do
     encoded_block = Block.encode(block)
-    <<0x00, 0x07, encoded_block :: binary>>
+    [<<0x00, 0x07,
+     <<:erlang.iolist_size(encoded_block) :: size(32)>>,
+     encoded_block :: binary>>]
   end
 
   def encode(%__MODULE__{proc: :inv, extra_data: invitems}) do
-    [<<0x00, 0x08>>, Enum.map(invitems, &InvItem.encode/1)]
+    encoded_invitems = Enum.map(invitems, &InvItem.encode/1)
+    [<<0x00, 0x08>>,
+     <<:erlang.iolist_size(encoded_invitems) :: size(16)>>,
+     encoded_invitems]
   end
 
   def encode(%__MODULE__{proc: :getblocks, extra_data: block_hashes}) do
-    [<<0x00, 0x09>>, block_hashes]
+    [<<0x00, 0x09>>,
+     <<:erlang.iolist_size(block_hashes) :: size(32)>>,
+     block_hashes]
   end
 
   def encode(%__MODULE__{proc: :getdata, extra_data: invitems}) do
-    [<<0x00, 0x10>>, Enum.map(invitems, &InvItem.encode/1)]
+    encoded_invitems = Enum.map(invitems, &InvItem.encode/1)
+    [<<0x00, 0x10>>,
+     <<:erlang.iolist_size(encoded_invitems) :: size(16)>>,
+     encoded_invitems]
   end
-  
+
 end
