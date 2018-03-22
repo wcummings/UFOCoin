@@ -3,7 +3,6 @@ require Logger
 alias WC.Blockchain.BlockValidatorServer, as: BlockValidatorServer
 alias WC.Blockchain.InvItem, as: InvItem
 alias WC.Blockchain.LogServer, as: LogServer
-alias WC.Blockchain.BlockHeader, as: BlockHeader
 alias WC.Blockchain.Block, as: Block
 alias WC.P2P.Packet, as: P2PPacket
 alias WC.P2P.AddrTable, as: P2PAddrTable
@@ -180,8 +179,7 @@ defmodule WC.P2P.Connection do
     state
   end
 
-  def handle_packet(%P2PPacket{proc: :inv, extra_data: invitems}, state = %{socket: socket,
-									    asked_for: asked_for}) do
+  def handle_packet(%P2PPacket{proc: :inv, extra_data: invitems}, state = %{asked_for: asked_for}) do
     new_asked_for = Enum.reduce(invitems, asked_for, &ask_for/2)
     send self(), :flush_asked_for
     %{state | asked_for: new_asked_for}

@@ -14,7 +14,7 @@ defmodule WC.Mixfile do
     [
       extra_applications: [:logger, :mnesia, :crypto, :xmerl, :ranch],
       mod: {WC, []},
-      applications: [:cachex, :nat]
+      applications: [:cachex, :nat, :base58check]
     ]
   end
 
@@ -23,6 +23,7 @@ defmodule WC.Mixfile do
      {:distillery, "~> 1.5", runtime: false},
      {:nat, github: 'wcummings/erlang-nat'},
      {:cachex, "~> 2.1"},
-     {:ranch, "~> 1.4.0"}]
+     {:ranch, "~> 1.4.0"},
+     {:base58check, github: "wcummings/base58check"}]
   end
 end
