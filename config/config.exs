@@ -32,7 +32,7 @@ use Mix.Config
 config :wc,
   default_port: 9009,
   port: 9009,
-  ip: :local, # {:nat, 9009} | {:ip, {192, 168, 0, 100}} | :local
+  ip: :local, # {:nat, 9009} | {:ip, {192, 168, 0, 100}} | :local | :none
   outbound_connections: 5,
   seed_dns: 'test1.wpc.io',
   mining_processes: 1,

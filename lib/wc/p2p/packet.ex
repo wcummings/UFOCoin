@@ -3,6 +3,8 @@ alias WC.Blockchain.Block, as: Block
 alias WC.Blockchain.BlockHeader, as: BlockHeader
 alias WC.Blockchain.InvItem, as: InvItem
 
+require Logger
+
 defmodule WC.P2P.Packet do
   @enforce_keys [:proc]
   defstruct proc: nil, extra_data: []
@@ -97,9 +99,9 @@ defmodule WC.P2P.Packet do
 
   def encode(%__MODULE__{proc: :block, extra_data: block}) do
     encoded_block = Block.encode(block)
-    [<<0x00, 0x07,
+    [<<0x00, 0x07>>,
      <<:erlang.iolist_size(encoded_block) :: size(32)>>,
-     encoded_block :: binary>>]
+     encoded_block]
   end
 
   def encode(%__MODULE__{proc: :inv, extra_data: invitems}) do
