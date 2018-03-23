@@ -10,7 +10,7 @@ alias WC.Blockchain.OrphanBlockTable, as: OrphanBlockTable
 alias WC.Blockchain.InvItem, as: InvItem
 alias WC.Miner.MinerServer, as: MinerServer
 alias WC.P2P.Packet, as: P2PPacket
-alias WC.P2P.Connection, as: P2PConnection
+alias WC.P2P.ConnectionRegistry, as: P2PConnectionRegistry
 
 defmodule WC.Blockchain.LogServer do
   use GenServer
@@ -209,8 +209,9 @@ defmodule WC.Blockchain.LogServer do
     if block == new_tip do
       # TODO: eventually use pub/sub for reorgs
       # Logger.info "New tip: #{Base.encode16(Block.hash(new_tip))}"
+      P2PConnectionRegistry.broadcast("new_tip", tip)      
       :ok = MinerServer.new_block(block)
-      P2PConnection.broadcast(%P2PPacket{proc: :inv, extra_data: [InvItem.from_block_hash(Block.hash(new_tip))]})
+      P2PConnectionRegistry.broadcast("packet", %P2PPacket{proc: :inv, extra_data: [InvItem.from_block_hash(Block.hash(new_tip))]})
     end
 
     {:noreply, %{state | tip: new_tip}}
@@ -218,7 +219,7 @@ defmodule WC.Blockchain.LogServer do
 
   def handle_info({:index_complete, tip}, state) do
     Logger.info "Indexing complete: [tip: #{BlockHeader.pprint(tip.header)}]"
-    :ok = P2PConnection.broadcast(%P2PPacket{proc: :getblocks, extra_data: get_block_locator()})    
+    P2PConnectionRegistry.broadcast("new_tip", tip)
     :ok = MinerServer.new_block(tip)
     {:noreply, %{state | tip: tip, index_complete: true}}
   end

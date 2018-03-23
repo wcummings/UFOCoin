@@ -4,6 +4,8 @@ alias WC.Blockchain.Block, as: Block
 alias WC.Blockchain.BlockHeader, as: BlockHeader
 alias WC.Blockchain.LogServer, as: LogServer
 alias WC.Blockchain.OrphanBlockTable, as: OrphanBlockTable
+alias WC.P2P.Packet, as: P2PPacket
+alias WC.P2P.ConnectionRegistry, as: P2PConnectionRegistry
 
 defmodule WC.Blockchain.BlockValidatorServer do
   @moduledoc """
@@ -57,9 +59,9 @@ defmodule WC.Blockchain.BlockValidatorServer do
 
   def send_getblocks do
     # Check that we don't spam the network during the initial indexing    
-    if LogServer.index_complete?() do
-      :ok = P2PConnection.broadcast(%P2PPacket{proc: :getblocks, extra_data: get_block_locator()})
-    end
+    # if LogServer.index_complete?() do
+    :ok = P2PConnectionRegistry.broadcast("packet", %P2PPacket{proc: :getblocks, extra_data: LogServer.get_block_locator()})
+    # end
   end
   
 end

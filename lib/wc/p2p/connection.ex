@@ -8,6 +8,7 @@ alias WC.P2P.Packet, as: P2PPacket
 alias WC.P2P.AddrTable, as: P2PAddrTable
 alias WC.P2P.PingFSM, as: P2PPingFSM
 alias WC.P2P.PingFSMSupervisor, as: P2PPingFSMSupervisor
+alias WC.P2P.ConnectionRegistry, as: P2PConnectionRegistry
 alias WC.Util.PriorityQueue, as: PriorityQueue
 
 defmodule WC.P2P.Connection do
@@ -44,21 +45,10 @@ defmodule WC.P2P.Connection do
     :ok = :gen_tcp.send(socket, P2PPacket.encode(packet))
   end
 
-  @spec broadcast(P2PPacket.t) :: :ok
-  def broadcast(packet) do
-    broadcast(packet, [])
-  end
-  
-  def broadcast(packet, excluded_pids) do
-    Registry.dispatch(:connection_registry, "connection", fn entries ->
-      Enum.filter(entries, fn {pid, _} -> not :lists.member(pid, excluded_pids) end)
-      |> Enum.each(fn {pid, _} -> send_packet(pid, packet) end)
-    end)
-  end
-
   def init([socket]) do
     :ok = :inet.setopts(socket, [{:active, :once}]) # Re-set {:active, :once}    
-    {:ok, _} = Registry.register(:connection_registry, "connection", [])
+    P2PConnectionRegistry.register("new_tip")
+    P2PConnectionRegistry.register("packet")
     {:ok, pid} = P2PPingFSMSupervisor.start_child(self())
     :true = Process.link(pid)
     _ref = Process.send_after(self(), :flush_asked_for, 10 * 1000)
@@ -71,10 +61,20 @@ defmodule WC.P2P.Connection do
     {:noreply, state}
   end
 
-  def handle_info(:send_getblocks, state = %{state: socket}) do
+  def handle_info(:send_getblocks, state = %{socket: socket}) do
     if LogServer.index_complete? do
       :ok = send_packet(socket, %P2PPacket{proc: :getblocks, extra_data: LogServer.get_block_locator()})
     end
+    {:noreply, state}
+  end
+
+  def handle_info({:connection_registry, "new_tip", tip}, state = %{socket: socket}) do
+    :ok = send_packet(socket, %P2PPacket{proc: :getblocks, extra_data: LogServer.get_block_locator(tip)})
+    {:noreply, state}
+  end
+
+  def handle_info({:connection_registry, "packet", packet}, state = %{socket: socket}) do
+    :ok = send_packet(socket, packet)
     {:noreply, state}
   end
   
@@ -133,10 +133,10 @@ defmodule WC.P2P.Connection do
       [addr] = addrs
       case P2PAddrTable.get(addr) do
 	{:error, :notfound} ->
-	  broadcast(packet)
+	  P2PConnectionRegistry.broadcast("packet", [self()])
 	{:ok, addr_with_last_seen} ->
 	  if (addr_with_last_seen.last_seen + 60 * 60 * 1000 < :os.system_time(:millisecond)) do
-	    broadcast(packet)
+	    P2PConnectionRegistry.broadcast("packet", [self()])	    
 	  end
       end
     end

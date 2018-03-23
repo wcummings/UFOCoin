@@ -48,10 +48,10 @@ defmodule WC.Blockchain.BlockHeader do
   def pprint(block_header) do
     "[" <> Base.encode16(hash(block_header)) <> ", "
     <> "prev_block_hash: #{Base.encode16(block_header.prev_block_hash)}, "
-    <> "timestamp: #{block_header.timestamp}, "
-    <> "difficulty: #{block_header.difficulty}, "
+    # <> "timestamp: #{block_header.timestamp}, "
+    # <> "difficulty: #{block_header.difficulty}, "
     <> "height: #{block_header.height}, "
-    <> "nonce: #{inspect(block_header.nonce)}]"
+    # <> "nonce: #{inspect(block_header.nonce)}]"
   end
 
 end

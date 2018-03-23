@@ -20,12 +20,12 @@ defmodule WC.Miner.MinerServer do
   end
   
   def init([]) do
-    minig_processes = Application.get_env(:wc, :mining_processes, 1)
+    mining_processes = Application.get_env(:wc, :mining_processes, 1)
     if LogServer.index_complete? do
       {:ok, tip} = LogServer.get_tip()
       :ok = new_block(tip)
     end
-    {:ok, %{@initial_state | mining_processes: minig_processes}}
+    {:ok, %{@initial_state | mining_processes: mining_processes}}
   end
 
   def handle_cast({:new_block, tip}, state = %{pids: pids, mining_processes: mining_processes}) do
