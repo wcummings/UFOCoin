@@ -62,11 +62,19 @@ defmodule WC.P2P.Connection do
     {:ok, pid} = P2PPingFSMSupervisor.start_child(self())
     :true = Process.link(pid)
     _ref = Process.send_after(self(), :flush_asked_for, 10 * 1000)
+    send self(), :send_getblocks
     {:ok, %{@initial_state | socket: socket, pingfsm: pid}}
   end
 
   def handle_cast({:send_packet, packet}, state = %{socket: socket}) do
     send_packet(socket, packet)
+    {:noreply, state}
+  end
+
+  def handle_info(:send_getblocks, state = %{state: socket}) do
+    if LogServer.index_complete? do
+      :ok = send_packet(socket, %P2PPacket{proc: :getblocks, extra_data: LogServer.get_block_locator()})
+    end
     {:noreply, state}
   end
   

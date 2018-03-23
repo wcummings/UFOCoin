@@ -34,7 +34,7 @@ defmodule WC.Blockchain.BlockValidatorServer do
 	case Block.validate(block) do
 	  :ok ->
 	    Logger.info "Block accepted: #{BlockHeader.pprint(block.header)}"	    
-	    LogServer.update(block)
+	    :ok = LogServer.update(block)
 	    case OrphanBlockTable.get_by_prev_block_hash(block_hash) do
 	      {:ok, blocks} ->
 		Logger.info "Found orphan child blocks: #{inspect(Enum.map(blocks, &Block.hash/1) |> Enum.map(&Base.encode16/1))}"
@@ -46,13 +46,19 @@ defmodule WC.Blockchain.BlockValidatorServer do
  	  {:error, :orphan} ->
 	    # See Block.validate/1 in block.ex for details.
 	    :ok = OrphanBlockTable.insert(block)
-	    # :ok = InventoryServer.getblocks()
-	    :ok = LogServer.getblocks()
+	    :ok = send_getblocks()
 	    {:noreply, state}
 	  {:error, error} ->
 	    Logger.warn "Block rejected, reason: #{inspect(error)}, #{BlockHeader.pprint(block.header)}"	    
 	    {:noreply, state}
 	end
+    end
+  end
+
+  def send_getblocks do
+    # Check that we don't spam the network during the initial indexing    
+    if LogServer.index_complete?() do
+      :ok = P2PConnection.broadcast(%P2PPacket{proc: :getblocks, extra_data: get_block_locator()})
     end
   end
   

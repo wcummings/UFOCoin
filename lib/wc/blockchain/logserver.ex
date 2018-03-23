@@ -150,13 +150,6 @@ defmodule WC.Blockchain.LogServer do
     end
   end
 
-  def getblocks do
-    # Check that we don't spam the network during the initial indexing    
-    if index_complete?() do
-      :ok = P2PConnection.broadcast(%P2PPacket{proc: :getblocks, extra_data: get_block_locator()})
-    end
-  end
-
   #
   # GENSERVER CALLBACKS
   #
@@ -225,9 +218,7 @@ defmodule WC.Blockchain.LogServer do
 
   def handle_info({:index_complete, tip}, state) do
     Logger.info "Indexing complete: [tip: #{BlockHeader.pprint(tip.header)}]"
-    # This might happen automagically
-    # FIXME!!!
-    # :ok = P2PConnection.broadcast(%P2PPacket{proc: :getblocks, extra_data: get_block_locator()})
+    :ok = P2PConnection.broadcast(%P2PPacket{proc: :getblocks, extra_data: get_block_locator()})    
     :ok = MinerServer.new_block(tip)
     {:noreply, %{state | tip: tip, index_complete: true}}
   end
