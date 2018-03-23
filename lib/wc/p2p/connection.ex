@@ -42,6 +42,7 @@ defmodule WC.P2P.Connection do
   end
 
   def send_packet(socket, packet = %P2PPacket{}) do
+    # Logger.debug ">>> #{inspect(packet)}"
     :ok = :gen_tcp.send(socket, P2PPacket.encode(packet))
   end
 
@@ -80,6 +81,7 @@ defmodule WC.P2P.Connection do
   
   def handle_info({:tcp, socket, data}, state = %{socket: socket}) do
     packet = P2PPacket.decode(data)
+    # Logger.debug "<<< #{inspect(packet)}"    
     state = handle_packet(packet, state)
     :ok = :inet.setopts(socket, [{:active, :once}]) # Re-set {:active, :once}
     {:noreply, state}
@@ -125,7 +127,7 @@ defmodule WC.P2P.Connection do
     state
   end
 
-  def handle_packet(packet = %P2PPacket{proc: :addr, extra_data: addrs}, state) do
+  def handle_packet(%P2PPacket{proc: :addr, extra_data: addrs}, state) do
     {ip, port} = {Application.get_env(:wc, :ip), Application.get_env(:wc, :port)}
 
     # If theres only one addr, its prolly a node advertising and the node should broadcast it
@@ -133,10 +135,10 @@ defmodule WC.P2P.Connection do
       [addr] = addrs
       case P2PAddrTable.get(addr) do
 	{:error, :notfound} ->
-	  P2PConnectionRegistry.broadcast("packet", [self()])
+	  P2PConnectionRegistry.broadcast("packet", %P2PPacket{proc: :addr, extra_data: [addr]}, [self()])
 	{:ok, addr_with_last_seen} ->
 	  if (addr_with_last_seen.last_seen + 60 * 60 * 1000 < :os.system_time(:millisecond)) do
-	    P2PConnectionRegistry.broadcast("packet", [self()])	    
+	    P2PConnectionRegistry.broadcast("packet", %P2PPacket{proc: :addr, extra_data: [addr]}, [self()])	    
 	  end
       end
     end

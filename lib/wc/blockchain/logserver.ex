@@ -209,17 +209,18 @@ defmodule WC.Blockchain.LogServer do
     if block == new_tip do
       # TODO: eventually use pub/sub for reorgs
       # Logger.info "New tip: #{Base.encode16(Block.hash(new_tip))}"
-      P2PConnectionRegistry.broadcast("new_tip", tip)      
+      :ok = P2PConnectionRegistry.broadcast("new_tip", tip)      
       :ok = MinerServer.new_block(block)
-      P2PConnectionRegistry.broadcast("packet", %P2PPacket{proc: :inv, extra_data: [InvItem.from_block_hash(Block.hash(new_tip))]})
     end
 
+    :ok = P2PConnectionRegistry.broadcast("packet", %P2PPacket{proc: :inv, extra_data: [InvItem.from_block_hash(Block.hash(block))]})
+    
     {:noreply, %{state | tip: new_tip}}
   end
 
   def handle_info({:index_complete, tip}, state) do
     Logger.info "Indexing complete: [tip: #{BlockHeader.pprint(tip.header)}]"
-    P2PConnectionRegistry.broadcast("new_tip", tip)
+    :ok = P2PConnectionRegistry.broadcast("new_tip", tip)
     :ok = MinerServer.new_block(tip)
     {:noreply, %{state | tip: tip, index_complete: true}}
   end
@@ -342,6 +343,7 @@ defmodule WC.Blockchain.LogServer do
 	    {:ok, [_|new_hashes]} = find_block_range(log, new_tip, parent)
 	    {:ok, [_|invalid_hashes]} = find_block_range(log, old_tip, parent)
 	    if length(invalid_hashes) > 0 do
+	      Logger.info "-------------------"	      
 	      Logger.info "Chain re-organized:"
 	      Logger.info "Common parent: #{Block.hash(parent) |> Base.encode16}"
 	      Logger.info "Added: #{inspect(Enum.map(new_hashes, &Base.encode16/1))}"
