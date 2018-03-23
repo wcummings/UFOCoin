@@ -61,9 +61,6 @@ defmodule WC.Blockchain.Block do
     Map.equal?(block1, block2)
   end
 
-  # IMPORTANT NOTE: This should check if the block is orphaned LAST,
-  # the caller should be able to trust that an orphaned block is valid,
-  # aside from being an orphan.
   @spec validate(t) :: :ok | {:error, block_validation_error}
   def validate(new_block = %__MODULE__{header: block_header}) do
     case BlockHeader.check_nonce(block_header) do
@@ -81,7 +78,6 @@ defmodule WC.Blockchain.Block do
       {:error, :badmerklehash}
     end
   end
-  
   
   def check_prev_block(block = %__MODULE__{header: %BlockHeader{prev_block_hash: prev_block_hash}}) do
     case LogServer.get_block_by_hash(prev_block_hash) do
