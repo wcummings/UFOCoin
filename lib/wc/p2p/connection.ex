@@ -54,6 +54,7 @@ defmodule WC.P2P.Connection do
     :true = Process.link(pid)
     _ref = Process.send_after(self(), :flush_asked_for, 10 * 1000)
     send self(), :send_getblocks
+    Process.send_after(self(), :send_addr, 12 * 60 * 60 * 1000)
     {:ok, %{@initial_state | socket: socket, pingfsm: pid}}
   end
 
@@ -66,6 +67,13 @@ defmodule WC.P2P.Connection do
     if LogServer.index_complete? do
       :ok = send_packet(socket, %P2PPacket{proc: :getblocks, extra_data: LogServer.get_block_locator()})
     end
+    {:noreply, state}
+  end
+
+  def handle_info(:send_addr, state = %{socket: socket}) do
+    {ip, port} = {Application.get_env(:wc, :ip), Application.get_env(:wc, :port)}
+    :ok = send_packet(socket, %P2PPacket{proc: :addr, extra_data: [%P2PAddr{ip: ip, port: port}]})
+    Process.send_after(self(), :send_addr, 12 * 60 * 60 * 1000)
     {:noreply, state}
   end
 
@@ -167,8 +175,6 @@ defmodule WC.P2P.Connection do
   end
 
   def handle_packet(%P2PPacket{proc: :getblocks, extra_data: block_locator}, state = %{socket: socket}) do
-    # Logger.info "Received block locator"
-    # for hash <- block_locator, do: Logger.info "Locator hash: #{Base.encode16(hash)}"
     case LogServer.find_first_block_hash_in_longest_chain(block_locator) do
       {:error, :index_incomplete} ->
 	:ok # IGNORE
