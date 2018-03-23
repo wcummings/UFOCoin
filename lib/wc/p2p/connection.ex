@@ -182,8 +182,7 @@ defmodule WC.P2P.Connection do
 	# TODO: do we tell the node we can't find it?
   	:ok
       {:ok, block_hash} ->
-	# TODO: use constant instead of 500
-	case LogServer.get_next_block_hashes_in_chain(500, block_hash) do
+	case LogServer.get_next_block_hashes_in_chain(@block_batch_size, block_hash) do
 	  [] ->
 	    # Do nothing
 	    nil
@@ -231,8 +230,7 @@ defmodule WC.P2P.Connection do
   end
 
   def handle_end_of_batch(block_hash, state = %{last_block_hash_in_batch: block_hash, socket: socket}) do
-    # FIXME: send block locator
-    # send_packet(socket, %P2PPacket{proc: :getblocks, extra_data: [block_hash]})
+    # :ok = send_packet(socket, %P2PPacket{proc: :getblocks, extra_data: [block_hash]})
     :ok = send_packet(socket, %P2PPacket{proc: :getblocks, extra_data: LogServer.get_block_locator()})
     %{state | last_block_hash_in_batch: nil}
   end
