@@ -170,6 +170,8 @@ defmodule WC.P2P.Connection do
     # Logger.info "Received block locator"
     # for hash <- block_locator, do: Logger.info "Locator hash: #{Base.encode16(hash)}"
     case LogServer.find_first_block_hash_in_longest_chain(block_locator) do
+      {:error, :index_incomplete} ->
+	:ok # IGNORE
       {:error, :notfound} ->
 	# TODO: do we tell the node we can't find it?
   	:ok

@@ -7,23 +7,23 @@ defmodule WC.Blockchain.ChainState do
   """
 
   def init do
-    :mnesia.create_table(ChainStateTable, [attributes: [:block_hash, :height, :cum_difficulty, :in_longest], type: :set])
+    :chain_state = :ets.new(:chain_state, [:public, :named_table, :set])
+    :ok
   end
 
-  @spec insert(BlockHeader.block_hash, non_neg_integer, non_neg_integer, boolean) :: term
+  @spec insert(BlockHeader.block_hash, non_neg_integer, non_neg_integer, boolean) :: :ok
   def insert(block_hash, height, cum_difficulty, in_longest) do
-    {:atomic, result} = :mnesia.transaction(fn -> :mnesia.write({ChainStateTable, block_hash, height, cum_difficulty, in_longest}) end)
-    result
+    :ets.insert(:chain_state, {block_hash, height, cum_difficulty, in_longest})
+    :ok
   end
   
-  @spec get_height_and_cum_difficulty(BlockHeader.block_hash) :: {:ok, {non_neg_integer, non_neg_integer}} | {:error, :notfound}
+  @spec get_height_and_cum_difficulty(BlockHeader.block_hash) :: {:ok, {non_neg_integer, non_neg_integer, boolean}} | {:error, :notfound}
   def get_height_and_cum_difficulty(block_hash) do
-    {:atomic, result} = :mnesia.transaction(fn -> :mnesia.read(ChainStateTable, block_hash) end)
-    case result do
-      [{ChainStateTable, ^block_hash, height, cum_difficulty, in_longest}] ->
-	{:ok, {height, cum_difficulty, in_longest}}
+    case :ets.lookup(:chain_state, block_hash) do
       [] ->
 	{:error, :notfound}
+      [{^block_hash, height, cum_difficulty, in_longest}] ->
+	{:ok, {height, cum_difficulty, in_longest}}
     end
   end
 

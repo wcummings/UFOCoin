@@ -34,7 +34,7 @@ defmodule WC.Blockchain.Block do
   end
 
   @spec hash(t) :: BlockHeader.block_hash
-  def hash(%__MODULE__{header: block_header, txs: txs} = block) do
+  def hash(%__MODULE__{header: block_header, txs: txs}) do
     encoded_txs = Enum.map(txs, &TX.encode/1)
     BlockHeader.hash(%{block_header | fake_merkle_hash: :crypto.hash(:sha256, encoded_txs)})
   end
@@ -45,7 +45,7 @@ defmodule WC.Blockchain.Block do
   end
 
   @spec next_block(t) :: t
-  def next_block(prev_block = %__MODULE__{header: prev_block_header, txs: _txs}) do
+  def next_block(prev_block = %__MODULE__{header: prev_block_header}) do
     prev_block_hash = BlockHeader.hash(prev_block_header)
     txs = [TX.coinbase()]
     block_header = %BlockHeader{prev_block_hash: prev_block_hash,

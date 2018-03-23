@@ -3,20 +3,20 @@ alias WC.Blockchain.BlockHeader, as: BlockHeader
 defmodule WC.Blockchain.BlockHashIndex do
 
   def init do
-    :mnesia.create_table(BlockHashIndexTable, [attributes: [:block_hash, :offset], type: :set])
+    :block_hash_index = :ets.new(:block_hash_index, [:set, :public, :named_table])
+    :ok
   end
 
-  @spec insert(BlockHeader.block_hash, non_neg_integer()) :: term
+  @spec insert(BlockHeader.block_hash, non_neg_integer()) :: :ok
   def insert(block_hash, offset) do
-    {:atomic, result} = :mnesia.transaction(fn -> :mnesia.write({BlockHashIndexTable, block_hash, offset}) end)
-    result
+    :true = :ets.insert_new(:block_hash_index, {block_hash, offset})
+    :ok
   end
 
   @spec get_offset(BlockHeader.block_hash) :: {:ok, list(non_neg_integer)} | {:error, :notfound}
   def get_offset(block_hash) do
-    {:atomic, result} = :mnesia.transaction(fn -> :mnesia.read(BlockHashIndexTable, block_hash) end)
-    case result do
-      [{BlockHashIndexTable, ^block_hash, offset}] ->
+    case :ets.lookup(:block_hash_index, block_hash) do
+      [{^block_hash, offset}] ->
 	{:ok, offset}
       [] ->
 	{:error, :notfound}

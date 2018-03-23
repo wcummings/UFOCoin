@@ -2,8 +2,9 @@ require Logger
 
 alias WC.Blockchain.Block, as: Block
 alias WC.Blockchain.BlockHeader, as: BlockHeader
+alias WC.Blockchain.OrphanBlockTable, as: OrphanBlockTable
+alias WC.P2P.AddrTable, as: P2PAddrTable
 alias WC.Wallet.KeyStore, as: KeyStore
-
 alias WC.P2P.UPnPServer, as: UPnPServer
 
 defmodule WC do
@@ -25,12 +26,9 @@ defmodule WC do
     
     Logger.debug "Initializing mnesia tables..."
     mnesia_tables = [
-      WC.P2P.AddrTable,
-      WC.Blockchain.BlockHashIndex,
-      WC.Blockchain.PrevBlockHashIndex,
-      WC.Blockchain.OrphanBlockTable,
-      WC.Blockchain.ChainState,
-      WC.Wallet.KeyStore
+      P2PAddrTable,
+      OrphanBlockTable,
+      KeyStore
     ]
 
     Enum.each(mnesia_tables, fn table ->

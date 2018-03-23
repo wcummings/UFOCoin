@@ -15,7 +15,9 @@ alias WC.P2P.ConnectionRegistry, as: P2PConnectionRegistry
 defmodule WC.Blockchain.LogServer do
   use GenServer
 
-  @initial_state %{tip: nil, index_complete: false, log: nil}
+  @initial_state %{tip: nil,
+		   index_complete: false,
+		   log: nil}
 
   #
   # PUBLIC
@@ -31,6 +33,9 @@ defmodule WC.Blockchain.LogServer do
       Logger.info "Inserting genesis block..."
       BlockchainLog.append_block(log, Block.encode(WC.genesis_block))
     end
+    :ok = BlockHashIndex.init
+    :ok = PrevBlockHashIndex.init
+    :ok = ChainState.init    
     spawn_link index_blocks(self())
     {:ok, %{@initial_state | log: log}}
   end

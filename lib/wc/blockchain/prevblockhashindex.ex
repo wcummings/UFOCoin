@@ -3,24 +3,23 @@ alias WC.Blockchain.BlockHeader, as: BlockHeader
 defmodule WC.Blockchain.PrevBlockHashIndex do
 
   def init do
-    :mnesia.create_table(PrevBlockHashIndexTable, [attributes: [:prev_block_hash, :offset], type: :set])
+    :prev_block_hash_index = :ets.new(:prev_block_hash_index, [:public, :named_table])
+    :ok
   end
 
   @spec insert(BlockHeader.block_hash, non_neg_integer()) :: term
   def insert(prev_block_hash, offset) do
-    # Include offset in key to dedupe
-    {:atomic, result} = :mnesia.transaction(fn -> :mnesia.write({PrevBlockHashIndexTable, {prev_block_hash, offset}, offset}) end)
-    result
+    :ets.insert(:prev_block_hash_index, {prev_block_hash, offset})
+    :ok
   end
 
   @spec get_offset(BlockHeader.block_hash) :: {:ok, list(non_neg_integer)} | {:error, :notfound}
   def get_offset(prev_block_hash) do
-    {:atomic, result} = :mnesia.transaction(fn -> :mnesia.match_object({PrevBlockHashIndexTable, {prev_block_hash, :_}, :_}) end)
-    case result do
+    case :ets.lookup(:prev_block_hash_index, prev_block_hash) do
       [] ->
 	{:error, :notfound}
       records ->
-	{:ok, Enum.map(records, fn {PrevBlockHashIndexTable, {^prev_block_hash, offset}, offset} -> offset end)}
+	{:ok, Enum.map(records, fn {^prev_block_hash, offset} -> offset end)}
     end
   end
   
