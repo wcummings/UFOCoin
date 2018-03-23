@@ -51,11 +51,6 @@ defmodule WC.Blockchain.LogServer do
   end
 
   @spec update(Block.t) :: :ok
-  def update(block = %Block{}) do
-    update(Block.encode(block))
-  end
-
-  @spec update(Block.encoded_block) :: :ok  
   def update(block) do
     GenServer.cast(__MODULE__, {:update, block})
   end
@@ -208,10 +203,10 @@ defmodule WC.Blockchain.LogServer do
 	{:reply, {:ok, block_hash}, state}
     end
   end
-  
-  def handle_cast({:update, encoded_block}, state = %{tip: tip, log: log}) do
-    block = Block.decode(encoded_block)
-    block_hash = Block.hash(encoded_block)
+
+  def handle_cast({:update, block}, state = %{tip: tip, log: log}) do
+    encoded_block = Block.encode(block)
+    block_hash = Block.hash(block)
     offset = BlockchainLog.append_block(log, encoded_block)
     :ok = BlockHashIndex.insert(block_hash, offset)
     :ok = PrevBlockHashIndex.insert(block.header.prev_block_hash, offset)

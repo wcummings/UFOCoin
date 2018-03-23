@@ -9,7 +9,7 @@ defmodule WC.Blockchain.BlockHeader do
   @type t :: %__MODULE__{prev_block_hash: block_hash, difficulty: non_neg_integer, height: non_neg_integer, nonce: binary}
 
   @spec encode(t) :: encoded_block_header
-  def encode(%__MODULE__{prev_block_hash: prev_block_hash, timestamp: timestamp, difficulty: difficulty, height: height, nonce: nonce}) do
+  def encode(%__MODULE__{prev_block_hash: <<prev_block_hash :: binary-size(32)>>, timestamp: timestamp, difficulty: difficulty, height: height, nonce: nonce}) do
     <<0x00, 0x01, prev_block_hash :: binary, timestamp :: size(64), difficulty :: size(32), height :: size(32), nonce :: binary>>
   end
 

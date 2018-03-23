@@ -13,16 +13,20 @@ defmodule WC.Blockchain.Block do
   @type t :: %__MODULE__{header: BlockHeader.t, txs: list(TX.t)}
 
   @spec encode(t) :: encoded_block
-  def encode(%__MODULE__{header: block_header, txs: _txs}) do
-    BlockHeader.encode(block_header) # FIXME: Ignoring TX's for now
+  def encode(%__MODULE__{header: block_header, txs: txs}) do
+    encoded_txs = Enum.map(txs, &TX.encode/1)
+    [
+      BlockHeader.encode(block_header),
+      <<:erlang.iolist_size(encoded_txs) :: size(32)>>,
+      encoded_txs
+    ]
   end
 
   # Block header size must be updated if header format is changed
   # Might be able to handle this w/ a macro
   @spec decode(encoded_block) :: t
-  def decode(encoded_block_header) do
-    block_header = BlockHeader.decode(encoded_block_header)
-    %__MODULE__{header: block_header, txs: []} # FIXME: Ignoring TX's for now
+  def decode(<<encoded_block_header :: binary-size(54), length :: size(32), txs :: binary-size(length)>>) do
+    %__MODULE__{header: BlockHeader.decode(encoded_block_header), txs: TX.decode(txs)}
   end
 
   @spec hash(t) :: BlockHeader.block_hash
@@ -31,8 +35,8 @@ defmodule WC.Blockchain.Block do
   end
 
   @spec hash(encoded_block) :: BlockHeader.block_hash
-  def hash(block_header) do
-    BlockHeader.hash(block_header)
+  def hash(<<encoded_block_header :: binary-size(54), _ :: binary>>) do
+    BlockHeader.hash(encoded_block_header)
   end
 
   @spec next_block(t) :: t
@@ -42,7 +46,7 @@ defmodule WC.Blockchain.Block do
 				height: prev_block_header.height + 1,
 				difficulty: get_current_difficulty(prev_block),
 				timestamp: :os.system_time(:millisecond)}
-    %__MODULE__{header: block_header, txs: []}
+    %__MODULE__{header: block_header, txs: [TX.coinbase()]}
   end
 
   @spec equal?(t, t) :: true | false

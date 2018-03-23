@@ -2,7 +2,7 @@ require Logger
 
 alias WC.Blockchain.Block, as: Block
 alias WC.Blockchain.BlockHeader, as: BlockHeader
-import Supervisor.Spec
+alias WC.Wallet.KeyStore, as: KeyStore
 
 alias WC.P2P.UPnPServer, as: UPnPServer
 
@@ -21,17 +21,18 @@ defmodule WC do
   def start(_, _) do
     Logger.info "Starting WhipCash node"
 
+    print_configuration()
+    
     Logger.debug "Initializing mnesia tables..."
     mnesia_tables = [
       WC.P2P.AddrTable,
       WC.Blockchain.BlockHashIndex,
       WC.Blockchain.PrevBlockHashIndex,
       WC.Blockchain.OrphanBlockTable,
-      WC.Blockchain.ChainState
+      WC.Blockchain.ChainState,
+      WC.Wallet.KeyStore
     ]
 
-    print_configuration()
-    
     Enum.each(mnesia_tables, fn table ->
       Logger.debug "Initializing #{inspect(table)}..."
       case table.init do
@@ -39,12 +40,14 @@ defmodule WC do
 	  :ok
 	{:aborted, error} ->
 	  Logger.error "Error setting up mnesia table: #{inspect(error)}"
-	  exit(error)
+	  exit(:error)
 	{:atomic, :ok} ->
 	  :ok
       end
     end)
 
+    setup_keystore()
+    
     # Insert seed nodes
     seed_nodes = lookup_seed_nodes()
     default_port = Application.get_env(:wc, :default_port)
@@ -63,6 +66,30 @@ defmodule WC do
     {:ok, pid}
   end
 
+  def setup_keystore do
+    if length(KeyStore.get_all_keypairs()) == 0 do
+      fingerprint = KeyStore.generate_key
+      address = Base58Check.encode58check(128, fingerprint)
+      Logger.info "KeyStore empty, generated key: #{address}"
+      Application.put_env(:wc, :coinbase_address, address)
+    end
+
+    coinbase_address = Application.get_env(:wc, :coinbase_address)
+    
+    if coinbase_address == nil do
+      Logger.error("coinbase_address must be set")
+      exit(:error)
+    else
+      try do
+	Base58Check.decode58check(coinbase_address)
+      rescue
+	ArgumentError ->
+	  Logger.error("coinbase_address is invalid: #{coinbase_address}")
+	  exit(:error)
+      end
+    end
+  end
+  
   def lookup_seed_nodes do
     seed_dns = Application.get_env(:wc, :seed_dns)
     {:ok, {:hostent, ^seed_dns, _, :inet, _, ips}} = :inet_res.getbyname(seed_dns, :a)
@@ -86,10 +113,6 @@ defmodule WC do
     Enum.filter(Application.get_all_env(:wc), fn {key, _} -> key != :included_applications end)
     |> Enum.each(fn {key, value} -> Logger.info "#{key} => #{inspect(value)}" end)
     Logger.info "End Configuration."
-  end
-
-  def base16_hashes(hashes) do
-    Enum.map(hashes, &Base.encode16/1)
   end
 
   def get_ip do

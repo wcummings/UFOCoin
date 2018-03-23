@@ -9,7 +9,7 @@ defmodule WC.Blockchain.Input do
   def encode(%__MODULE__{tx_hash: <<tx_hash :: binary-size(32)>>,
 			 offset: offset,
 			 pubkey: <<pubkey :: binary-size(32)>>,
-			 signature: <<signature :: binary-size(32)>>}) do
+			 signature: <<signature :: binary-size(256)>>}) do
     <<tx_hash :: binary, offset :: size(8), pubkey :: binary, signature :: binary>>
   end
 
