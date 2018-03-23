@@ -2,20 +2,46 @@ require Logger
 
 defmodule WC.Blockchain.BlockHeader do
   @enforce_keys [:prev_block_hash, :timestamp, :difficulty, :height]
-  defstruct prev_block_hash: nil, timestamp: nil, difficulty: nil, height: nil, nonce: <<0, 0, 0, 0>>
+  defstruct prev_block_hash: nil, timestamp: nil, difficulty: nil, height: nil, fake_merkle_hash: nil, nonce: <<0, 0, 0, 0>>
 
   @type block_hash :: binary
   @type encoded_block_header :: binary
-  @type t :: %__MODULE__{prev_block_hash: block_hash, difficulty: non_neg_integer, height: non_neg_integer, nonce: binary}
+  @type t :: %__MODULE__{prev_block_hash: block_hash,
+			 difficulty: non_neg_integer,
+			 height: non_neg_integer,
+			 fake_merkle_hash: binary,
+			 nonce: binary}
 
   @spec encode(t) :: encoded_block_header
-  def encode(%__MODULE__{prev_block_hash: <<prev_block_hash :: binary-size(32)>>, timestamp: timestamp, difficulty: difficulty, height: height, nonce: nonce}) do
-    <<0x00, 0x01, prev_block_hash :: binary, timestamp :: size(64), difficulty :: size(32), height :: size(32), nonce :: binary>>
+  def encode(%__MODULE__{prev_block_hash: <<prev_block_hash :: binary-size(32)>>,
+			 timestamp: timestamp,
+			 difficulty: difficulty,
+			 height: height,
+			 fake_merkle_hash: <<fake_merkle_hash :: binary-size(32)>>,
+			 nonce: nonce}) do
+    <<0x00, 0x01,
+      prev_block_hash :: binary,
+      timestamp :: size(64),
+      difficulty :: size(32),
+      height :: size(32),
+      fake_merkle_hash :: binary,
+      nonce :: binary>>
   end
 
   @spec decode(encoded_block_header) :: t
-  def decode(<<0x00, 0x01, prev_block_hash :: binary-size(32), timestamp :: size(64), difficulty :: size(32), height :: size(32), nonce :: binary-size(4)>>) do
-    %__MODULE__{prev_block_hash: prev_block_hash, timestamp: timestamp, difficulty: difficulty, height: height, nonce: nonce}
+  def decode(<<0x00, 0x01,
+               prev_block_hash :: binary-size(32),
+               timestamp :: size(64),
+               difficulty :: size(32),
+    height :: size(32),
+               fake_merkle_hash :: binary-size(32),
+               nonce :: binary-size(4)>>) do
+    %__MODULE__{prev_block_hash: prev_block_hash,
+		timestamp: timestamp,
+		difficulty: difficulty,
+		height: height,
+		fake_merkle_hash: fake_merkle_hash,
+		nonce: nonce}
   end
 
   @spec hash(t) :: block_hash
@@ -41,8 +67,8 @@ defmodule WC.Blockchain.BlockHeader do
 
   @spec update_nonce(encoded_block_header, binary()) :: encoded_block_header
   def update_nonce(encoded_block_header, new_nonce) do
-    <<0x00, 0x01, prev_block_hash :: binary-size(32), timestamp :: size(64), difficulty :: size(32), height :: size(32), _n :: binary-size(4)>> = encoded_block_header
-    <<0x00, 0x01, prev_block_hash :: binary, timestamp :: size(64), difficulty :: size(32), height :: size(32), new_nonce :: binary>>
+    <<0x00, 0x01, prev_block_hash :: binary-size(32), timestamp :: size(64), difficulty :: size(32), height :: size(32), fake_merkle_hash :: binary-size(32), _n :: binary-size(4)>> = encoded_block_header
+    <<0x00, 0x01, prev_block_hash :: binary, timestamp :: size(64), difficulty :: size(32), height :: size(32), fake_merkle_hash :: binary, new_nonce :: binary>>
   end
 
   def pprint(block_header) do

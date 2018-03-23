@@ -8,15 +8,19 @@ defmodule WC.Blockchain.Block do
   @enforce_keys [:header, :txs]
   defstruct [:header, :txs]
 
-  @type block_validation_error :: :notfound | :orphan | :badheight | :alreadyaccepted | :baddifficulty
+  @type block_validation_error :: :notfound | :orphan | :badheight | :alreadyaccepted | :baddifficulty | :badmerklehash
   @type encoded_block :: binary
   @type t :: %__MODULE__{header: BlockHeader.t, txs: list(TX.t)}
 
   @spec encode(t) :: encoded_block
   def encode(%__MODULE__{header: block_header, txs: txs}) do
+    # Create a compact representation of the transaction
+    # Should eventually be replaced by a merkle hash, so
+    # that you can check membership
     encoded_txs = Enum.map(txs, &TX.encode/1)
+    fake_merkle_hash = :crypto.hash(:sha256, encoded_txs)    
     [
-      BlockHeader.encode(block_header),
+      BlockHeader.encode(%{block_header | fake_merkle_hash: fake_merkle_hash}),
       <<:erlang.iolist_size(encoded_txs) :: size(32)>>,
       encoded_txs
     ]
@@ -25,28 +29,31 @@ defmodule WC.Blockchain.Block do
   # Block header size must be updated if header format is changed
   # Might be able to handle this w/ a macro
   @spec decode(encoded_block) :: t
-  def decode(<<encoded_block_header :: binary-size(54), length :: size(32), txs :: binary-size(length)>>) do
+  def decode(<<encoded_block_header :: binary-size(86), length :: size(32), txs :: binary-size(length)>>) do
     %__MODULE__{header: BlockHeader.decode(encoded_block_header), txs: TX.decode(txs)}
   end
 
   @spec hash(t) :: BlockHeader.block_hash
-  def hash(%__MODULE__{header: block_header}) do
-    BlockHeader.hash(block_header)
+  def hash(%__MODULE__{header: block_header, txs: txs} = block) do
+    encoded_txs = Enum.map(txs, &TX.encode/1)
+    BlockHeader.hash(%{block_header | fake_merkle_hash: :crypto.hash(:sha256, encoded_txs)})
   end
 
   @spec hash(encoded_block) :: BlockHeader.block_hash
-  def hash(<<encoded_block_header :: binary-size(54), _ :: binary>>) do
+  def hash(<<encoded_block_header :: binary-size(86), _ :: binary>>) do
     BlockHeader.hash(encoded_block_header)
   end
 
   @spec next_block(t) :: t
   def next_block(prev_block = %__MODULE__{header: prev_block_header, txs: _txs}) do
     prev_block_hash = BlockHeader.hash(prev_block_header)
+    txs = [TX.coinbase()]
     block_header = %BlockHeader{prev_block_hash: prev_block_hash,
 				height: prev_block_header.height + 1,
 				difficulty: get_current_difficulty(prev_block),
+				fake_merkle_hash: :crypto.hash(:sha256, Enum.map(txs, &TX.encode/1)),
 				timestamp: :os.system_time(:millisecond)}
-    %__MODULE__{header: block_header, txs: [TX.coinbase()]}
+    %__MODULE__{header: block_header, txs: txs}
   end
 
   @spec equal?(t, t) :: true | false
@@ -67,6 +74,15 @@ defmodule WC.Blockchain.Block do
     end
   end
 
+  def check_fake_merkle_hash(%__MODULE__{header: %BlockHeader{fake_merkle_hash: fake_merkle_hash}, txs: txs} = block) do
+    if :crypto.hash(:sha256, Enum.map(txs, &TX.encode/1)) == fake_merkle_hash do
+      check_prev_block(block)
+    else
+      {:error, :badmerklehash}
+    end
+  end
+  
+  
   def check_prev_block(block = %__MODULE__{header: %BlockHeader{prev_block_hash: prev_block_hash}}) do
     case LogServer.get_block_by_hash(prev_block_hash) do
       {:error, :notfound} ->
@@ -120,5 +136,5 @@ defmodule WC.Blockchain.Block do
   def get_difficulty(block) do
     get_difficulty(LogServer.get_prev_blocks(144, block))
   end
-  
+
 end
