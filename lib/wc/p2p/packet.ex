@@ -2,8 +2,7 @@ alias WC.P2P.Addr, as: P2PAddr
 alias WC.Blockchain.Block, as: Block
 alias WC.Blockchain.BlockHeader, as: BlockHeader
 alias WC.Blockchain.InvItem, as: InvItem
-
-require Logger
+alias WC.Blockchain.TX, as: TX
 
 defmodule WC.P2P.Packet do
   @enforce_keys [:proc]
@@ -20,7 +19,8 @@ defmodule WC.P2P.Packet do
   @type inv_p2p_packet :: %__MODULE__{proc: :inv, extra_data: list(InvItem.t)}
   @type getblocks_p2p_packet :: %__MODULE__{proc: :getblocks, extra_data: list(BlockHeader.block_hash)}
   @type getdata_p2p_packet :: %__MODULE__{proc: :getdata, extra_data: list(InvItem.t)}
-  @type t :: ping_p2p_packet | pong_p2p_packet | getaddrs_p2p_packet | addr_p2p_packet | version_p2p_packet | versionack_p2p_packet | block_p2p_packet | inv_p2p_packet | getblocks_p2p_packet | getdata_p2p_packet
+  @type tx_p2p_packet :: %__MODULE__{proc: :tx, extra_data: list(TX.t)}
+  @type t :: ping_p2p_packet | pong_p2p_packet | getaddrs_p2p_packet | addr_p2p_packet | version_p2p_packet | versionack_p2p_packet | block_p2p_packet | inv_p2p_packet | getblocks_p2p_packet | getdata_p2p_packet | tx_p2p_packet
 
   @spec decode(encoded_packet) :: t
   def decode(<<0x00, 0x01, length :: size(8), version :: binary-size(length)>>) do
@@ -65,6 +65,10 @@ defmodule WC.P2P.Packet do
   def decode(<<0x00, 0x10, length :: size(16), invitems :: binary-size(length)>>) do
       invitems = for <<invitem :: binary-size(33) <- invitems>>, do: InvItem.decode(invitem)
       %__MODULE__{proc: :getdata, extra_data: invitems}
+  end
+
+  def decode(<<0x00, 0x11, length :: size(32), txs :: binary-size(length)>>) do
+    %__MODULE__{proc: :tx, extra_data: TX.decode(txs)}
   end
   
   @spec encode(t) :: encoded_packet
@@ -122,6 +126,13 @@ defmodule WC.P2P.Packet do
     [<<0x00, 0x10>>,
      <<:erlang.iolist_size(encoded_invitems) :: size(16)>>,
      encoded_invitems]
+  end
+
+  def encode(%__MODULE__{proc: :tx, extra_data: txs}) do
+    encoded_txs = Enum.map(txs, &TX.encode/1)
+    [<<0x00, 0x11>>,
+     <<:erlang.iolist_size(txs) :: size(32)>>,
+     encoded_txs]
   end
 
 end
