@@ -2,6 +2,7 @@ alias WC.Blockchain.BlockHeader, as: BlockHeader
 
 defmodule WC.Blockchain.BlockHashIndex do
 
+  @spec init :: :ok
   def init do
     :block_hash_index = :ets.new(:block_hash_index, [:set, :public, :named_table])
     :ok

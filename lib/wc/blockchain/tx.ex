@@ -6,6 +6,8 @@ require Logger
 defmodule WC.Blockchain.TX do
   defstruct version: 1, inputs: [], outputs: []
 
+  @reward 5000
+  
   @type t :: %__MODULE__{version: non_neg_integer, inputs: list(Input.t), outputs: list(Output.t)}
   @type encoded_tx :: binary
   @type tx_hash :: binary
@@ -67,11 +69,16 @@ defmodule WC.Blockchain.TX do
   @spec coinbase :: t
   def coinbase do
     {_, fingerprint} = Base58Check.decode58check(Application.get_env(:wc, :coinbase_address))
-    %__MODULE__{outputs: [%Output{fingerprint: fingerprint, value: 5000}]}
+    %__MODULE__{outputs: [%Output{fingerprint: fingerprint, value: @reward}]}
   end
 
-  def validate(tx) do
-    
+  @spec is_coinbase(list(t)) :: true | false
+  def is_coinbase(%__MODULE__{inputs: [], outputs: [%Output{size: @reward}]}) do
+    true
+  end
+
+  def is_coinbase(_) do
+    false
   end
 
 end

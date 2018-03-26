@@ -8,10 +8,12 @@ alias WC.Blockchain.Log, as: BlockchainLog
 alias WC.Blockchain.ChainState, as: ChainState
 alias WC.Blockchain.OrphanBlockTable, as: OrphanBlockTable
 alias WC.Blockchain.InvItem, as: InvItem
+alias WC.Blockchain.TX, as: TX
+alias WC.Blockchain.TxHashIndex, as: TxHashIndex
+alias WC.Blockchain.UTXOServer, as: UTXOServer
 alias WC.Miner.MinerServer, as: MinerServer
 alias WC.P2P.Packet, as: P2PPacket
 alias WC.P2P.ConnectionRegistry, as: P2PConnectionRegistry
-alias WC.Blockchain.TxHashIndex, as: TxHashIndex
 
 defmodule WC.Blockchain.LogServer do
   use GenServer
@@ -52,6 +54,17 @@ defmodule WC.Blockchain.LogServer do
   @spec get_blocks_by_prev_hash(BlockHeader.block_hash) :: {:ok, list(Block.t)} | {:error, :notfound}
   def get_blocks_by_prev_hash(prev_block_hash) do
     GenServer.call(__MODULE__, {:get_block_with_index, PrevBlockHashIndex, prev_block_hash})
+  end
+
+  @spec get_tx(TX.tx_hash) :: {:ok, TX.t} | {:error, term}
+  def get_tx(tx_hash) do
+    case GenServer.call(__MODULE__, {:get_block_with_index, TxHashIndex, tx_hash}) do
+      {:error, error} ->
+	{:error, error}
+      {:ok, block} ->
+	[tx] = Enum.filter(block.txs, fn tx -> TX.hash(tx) == tx_hash end)
+	{:ok, tx}
+    end
   end
   
   @spec get_tip() :: {:ok, Block.t}
@@ -342,36 +355,34 @@ defmodule WC.Blockchain.LogServer do
   end
 
   def update_chain_state(log, old_tip, new_tip) do
-    {:atomic, result} = :mnesia.transaction(fn ->
-      {:ok, {_, cum_difficulty, _}} = ChainState.get_height_and_cum_difficulty(new_tip.header.prev_block_hash)
-      new_cum_difficulty = cum_difficulty + new_tip.header.difficulty
-      {:ok, {_, old_cum_difficulty, _}} = ChainState.get_height_and_cum_difficulty(Block.hash(old_tip))
-      is_longest = new_cum_difficulty > old_cum_difficulty
-      :ok = ChainState.insert(Block.hash(new_tip), new_tip.header.height, new_cum_difficulty, is_longest)
-      if is_longest do
-	case find_first_parent_in_longest_chain(log, new_tip) do
-	  {:ok, parent} ->
-	    {:ok, [_|new_hashes]} = find_block_range(log, new_tip, parent)
-	    {:ok, [_|invalid_hashes]} = find_block_range(log, old_tip, parent)
-	    if length(invalid_hashes) > 0 do
-	      Logger.info "-------------------"	      
-	      Logger.info "Chain re-organized:"
-	      Logger.info "Common parent: #{Block.hash(parent) |> Base.encode16}"
-	      Logger.info "Added: #{inspect(Enum.map(new_hashes, &Base.encode16/1))}"
-	      Logger.info "Removed: #{inspect(Enum.map(invalid_hashes, &Base.encode16/1))}"
-	      Logger.info "-------------------"
-	    end
-	    for hash <- invalid_hashes, do: :ok = ChainState.update_longest(hash, false)
-	    for hash <- new_hashes, do: :ok = ChainState.update_longest(hash, true)
-	    {:ok, new_tip}
-	  error ->
-	    error
-	end
-      else
-	{:ok, old_tip}
+    {:ok, {_, cum_difficulty, _}} = ChainState.get_height_and_cum_difficulty(new_tip.header.prev_block_hash)
+    new_cum_difficulty = cum_difficulty + new_tip.header.difficulty
+    {:ok, {_, old_cum_difficulty, _}} = ChainState.get_height_and_cum_difficulty(Block.hash(old_tip))
+    is_longest = new_cum_difficulty > old_cum_difficulty
+    :ok = ChainState.insert(Block.hash(new_tip), new_tip.header.height, new_cum_difficulty, is_longest)
+    if is_longest do
+      case find_first_parent_in_longest_chain(log, new_tip) do
+	{:ok, parent} ->
+	  {:ok, [_|added_hashes]} = find_block_range(log, new_tip, parent)
+	  {:ok, [_|removed_hashes]} = find_block_range(log, old_tip, parent)
+	  if length(removed_hashes) > 0 do
+	    Logger.info "-------------------"	      
+	    Logger.info "Chain re-organized:"
+	    Logger.info "Common parent: #{Block.hash(parent) |> Base.encode16}"
+	    Logger.info "Added: #{inspect(Enum.map(added_hashes, &Base.encode16/1))}"
+	    Logger.info "Removed: #{inspect(Enum.map(removed_hashes, &Base.encode16/1))}"
+	    Logger.info "-------------------"
+	  end
+	  for hash <- removed_hashes, do: :ok = ChainState.update_longest(hash, false)
+	  for hash <- added_hashes, do: :ok = ChainState.update_longest(hash, true)
+	  :ok = UTXOServer.update(removed_hashes, added_hashes)
+	  {:ok, new_tip}
+	error ->
+	  error
       end
-    end)
-    result
+    else
+      {:ok, old_tip}
+    end
   end
 
 end
