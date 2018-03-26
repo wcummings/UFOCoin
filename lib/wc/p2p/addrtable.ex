@@ -4,8 +4,6 @@ alias WC.P2P.Addr, as: P2PAddr
 
 defmodule WC.P2P.AddrTable do
 
-  # FIXME: Addr -> :p2paddr or P2PAddrTable or something like that
-  
   def init do
     :mnesia.create_table(P2PAddrTable, [attributes: [:host, :last_seen], type: :set])
   end

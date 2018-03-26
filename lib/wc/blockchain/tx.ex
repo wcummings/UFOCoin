@@ -8,6 +8,7 @@ defmodule WC.Blockchain.TX do
 
   @type t :: %__MODULE__{version: non_neg_integer, inputs: list(Input.t), outputs: list(Output.t)}
   @type encoded_tx :: binary
+  @type tx_hash :: binary
 
   @spec sign(binary, t) :: t
   def sign(private_key, %__MODULE__{version: 1, inputs: inputs} = tx) do
@@ -19,6 +20,16 @@ defmodule WC.Blockchain.TX do
     signature = :crypto.sign(:rsa, :rsa_digest_type, encoded_tx_without_signature, private_key)
     inputs3 = Enum.map(inputs2, fn input -> %{input | signature: signature} end)
     %{tx | inputs: inputs3}
+  end
+
+  @spec hash(t) :: tx_hash
+  def hash(%__MODULE__{} = tx) do
+    encode(tx) |> hash
+  end
+
+  @spec hash(encoded_tx) :: tx_hash
+  def hash(encoded_tx) do
+    :crypto.hash(:sha256, encoded_tx)
   end
   
   @spec encode(t) :: encoded_tx
@@ -58,5 +69,9 @@ defmodule WC.Blockchain.TX do
     {_, fingerprint} = Base58Check.decode58check(Application.get_env(:wc, :coinbase_address))
     %__MODULE__{outputs: [%Output{fingerprint: fingerprint, value: 5000}]}
   end
-  
+
+  def validate(tx) do
+    
+  end
+
 end
