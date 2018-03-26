@@ -11,6 +11,7 @@ alias WC.Blockchain.InvItem, as: InvItem
 alias WC.Miner.MinerServer, as: MinerServer
 alias WC.P2P.Packet, as: P2PPacket
 alias WC.P2P.ConnectionRegistry, as: P2PConnectionRegistry
+alias WC.Blockchain.TxHashIndex, as: TxHashIndex
 
 defmodule WC.Blockchain.LogServer do
   use GenServer
@@ -33,9 +34,12 @@ defmodule WC.Blockchain.LogServer do
       Logger.info "Inserting genesis block..."
       BlockchainLog.append_block(log, Block.encode(WC.genesis_block))
     end
+    # Setup ets tables for indexes
     :ok = BlockHashIndex.init
     :ok = PrevBlockHashIndex.init
-    :ok = ChainState.init    
+    :ok = TxHashIndex.init
+    :ok = ChainState.init
+    # Kick off indexer process
     spawn_link index_blocks(self())
     {:ok, %{@initial_state | log: log}}
   end
@@ -209,7 +213,9 @@ defmodule WC.Blockchain.LogServer do
     :ok = BlockHashIndex.insert(block_hash, offset)
     :ok = PrevBlockHashIndex.insert(block.header.prev_block_hash, offset)
     :ok = OrphanBlockTable.delete(block_hash) # Remove orphan entry, if one existed
-
+    
+    Enum.each(block.txs, fn tx -> :ok = TxHashIndex.insert(TX.hash(tx), block_hash) end)
+    
     {:ok, new_tip} = update_chain_state(log, tip, block)
     if block == new_tip do
       # TODO: eventually use pub/sub for reorgs
