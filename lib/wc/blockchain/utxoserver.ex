@@ -34,7 +34,8 @@ defmodule WC.Blockchain.UTXOServer do
     removed_blocks = Enum.map(removed_block_hashes, &LogServer.get_block_by_hash!/1)
     added_block = Enum.map(added_block_hashes, &LogServer.get_block_by_hash!/1)
     # Fetch all txs referenced in inputs of removed blocks
-    tx_map = Enum.flat_map(removed_blocks, fn %Block{txs: txs} -> txs.inputs end)
+    tx_map = Enum.flat_map(removed_blocks, fn %Block{txs: txs} -> txs end)
+    |> Enum.flat_map(fn tx -> tx.inputs end)
     |> Enum.map(fn input ->
       {:ok, tx} = LogServer.get_tx(input.tx_hash)
       tx

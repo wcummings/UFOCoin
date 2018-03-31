@@ -8,13 +8,13 @@ defmodule WC.Blockchain.TxHashIndex do
 
   @spec init :: :ok
   def init do
-    :tx_hash_index = :ets.new(:tx_hash_index, [:public, :named_set, :set])
+    :tx_hash_index = :ets.new(:tx_hash_index, [:public, :named_table, :set])
     :ok
   end
 
   @spec insert(TX.tx_hash, BlockHeader.block_hash) :: :ok
   def insert(tx_hash, block_hash) do
-    :true = :ets.insert_new(:tx_hash_index, {tx_hash, block_hash})
+    :true = :ets.insert(:tx_hash_index, {tx_hash, block_hash})
     :ok
   end
 

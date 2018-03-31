@@ -23,7 +23,7 @@ defmodule WC.Blockchain.UTXOSet do
 
   @spec get_tx_from_utxo_set(TX.tx_hash, t) :: {:ok, TX.t} | {:error, :notfound}
   def get_tx_from_utxo_set(tx_hash, utxo_set) do
-    case :ets.lookup(utxo_set, tx_hash) do
+    case :ets.lookup(utxo_set.set, tx_hash) do
       [] ->
 	{:error, :notfound}
       [{^tx_hash, tx}] ->
@@ -37,21 +37,25 @@ defmodule WC.Blockchain.UTXOSet do
 
   def rollback_blocks([block|rest], tx_map, utxo_set) do
     # 1. Delete outputs from the block
-    Enum.each(utxo_keys(block), fn key -> :ok = :ets.delete(utxo_set, key) end)
+    Enum.each(utxo_keys(block), fn key -> :ok = :ets.delete(utxo_set.set, key) end)
     # 2. Re-add outputs referenced in the block's inputs
     Enum.flat_map(block.txs, fn tx -> get_utxo_values_for_inputs(tx, tx_map) end)
-    |> Enum.each(fn value -> :true = :ets.insert(utxo_set, value) end)
-    rollback_blocks(rest, utxo_set)
+    |> Enum.each(fn value -> :true = :ets.insert(utxo_set.set, value) end)
+    rollback_blocks(rest, tx_map, utxo_set)
   end
 
-  def rollback_blocks([], _) do
+  def rollback_blocks([], _, _) do
     :ok
   end
 
   def insert_blocks([block|rest], utxo_set) do
-    Enum.each(utxo_keys(block), fn key -> :ok = :ets.delete(utxo_set, key) end)
-    Enum.each(utxo_values(block), fn value -> :true = :ets.insert(utxo_set, value) end)
+    Enum.each(utxo_keys(block), fn key -> :ok = :ets.delete(utxo_set.set, key) end)
+    Enum.each(utxo_values(block), fn value -> :true = :ets.insert(utxo_set.set, value) end)
     insert_blocks(rest, utxo_set)
+  end
+
+  def insert_blocks([], _) do
+    :ok
   end
 
   @spec get_utxo_values_for_inputs(TX.t, Map.t) :: list({{TX.tx_hash, non_neg_integer}, Output.t})

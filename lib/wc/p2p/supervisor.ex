@@ -9,7 +9,6 @@ defmodule WC.P2P.Supervisor do
     children = [
       worker(WC.P2P.AddrServer, []),
       supervisor(WC.P2P.HandshakeSupervisor, []),
-      {Registry, [keys: :duplicate, name: :connection_registry]},
       supervisor(WC.P2P.ConnectionSupervisor, []),
       supervisor(WC.P2P.PingFSMSupervisor, []),      
       supervisor(WC.P2P.ClientFSMSupervisor, [])

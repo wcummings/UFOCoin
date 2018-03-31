@@ -4,7 +4,8 @@
   CLOSED: [2017-11-28 Tue 15:56]
 * DONE Supervisor for pingfsm
   CLOSED: [2017-11-28 Tue 15:56]
-* TODO Difficulty adjustment
+* DONE Difficulty adjustment
+  CLOSED: [2018-03-30 Fri 22:38]
 * DONE Exclude recipient from broadcast
   CLOSED: [2017-11-28 Tue 17:09]
 * DONE Inventory sync
@@ -29,12 +30,16 @@ For expiring keys in mnesia and shit like that
 * TODO Make tests not suck
 * TODO Repalce alias w/ import where appropriate
 * TODO Macro for size of functions returning binaries
-* TODO Maybe convert mnesia tables to ets for safety?
-* TODO Batch block commands
+* DONE Maybe convert mnesia tables to ets for safety?
+  CLOSED: [2018-03-30 Fri 22:37]
+* DONE Batch block commands
+  CLOSED: [2018-03-30 Fri 22:37]
 * DONE Get rid of inventory server
   CLOSED: [2018-03-08 Thu 19:05]
-* TODO Make block batch size >1 
-* TODO Fix ping?
+* DONE Make block batch size >1 
+  CLOSED: [2018-03-30 Fri 22:38]
+* DONE Fix ping?
+  CLOSED: [2018-03-30 Fri 22:38]
 * TODO Separate loggers into groups
 * DONE Possible bug w/ checking out addrs
   CLOSED: [2018-03-14 Wed 17:10]
@@ -46,3 +51,4 @@ Was a bug w/ restarting clientfsms, no problem w/ addrserver
 * DONE ClientFSMSup needs to start processes!!!!!
   CLOSED: [2018-03-14 Wed 17:09]
 * TODO Add node name to version message
+* TODO Floor (and ceiling?) for difficulty
