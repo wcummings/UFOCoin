@@ -6,6 +6,7 @@ alias WC.Blockchain.LogServer, as: LogServer
 alias WC.Blockchain.Block, as: Block
 alias WC.P2P.Packet, as: P2PPacket
 alias WC.P2P.AddrTable, as: P2PAddrTable
+alias WC.P2P.Addr, as: P2PAddr
 alias WC.P2P.PingFSM, as: P2PPingFSM
 alias WC.P2P.PingFSMSupervisor, as: P2PPingFSMSupervisor
 alias WC.P2P.ConnectionRegistry, as: P2PConnectionRegistry

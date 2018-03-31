@@ -78,7 +78,7 @@ defmodule WC.Blockchain.Block do
       {:error, :badmerklehash}
     end
   end
-  
+
   def check_prev_block(block = %__MODULE__{header: %BlockHeader{prev_block_hash: prev_block_hash}}) do
     case LogServer.get_block_by_hash(prev_block_hash) do
       {:error, :notfound} ->

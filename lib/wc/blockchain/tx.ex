@@ -73,7 +73,7 @@ defmodule WC.Blockchain.TX do
   end
 
   @spec is_coinbase(list(t)) :: true | false
-  def is_coinbase(%__MODULE__{inputs: [], outputs: [%Output{size: @reward}]}) do
+  def is_coinbase(%__MODULE__{inputs: [], outputs: [%Output{value: @reward}]}) do
     true
   end
 

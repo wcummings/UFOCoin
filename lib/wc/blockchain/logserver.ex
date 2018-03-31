@@ -51,6 +51,12 @@ defmodule WC.Blockchain.LogServer do
     GenServer.call(__MODULE__, {:get_block_with_index, BlockHashIndex, block_hash})
   end
 
+  @spec get_block_by_hash!(BlockHeader.block_hash) :: Block.t
+  def get_block_by_hash!(block_hash) do
+    {:ok, block} = get_block_by_hash(block_hash)
+    block
+  end
+
   @spec get_blocks_by_prev_hash(BlockHeader.block_hash) :: {:ok, list(Block.t)} | {:error, :notfound}
   def get_blocks_by_prev_hash(prev_block_hash) do
     GenServer.call(__MODULE__, {:get_block_with_index, PrevBlockHashIndex, prev_block_hash})
@@ -228,7 +234,7 @@ defmodule WC.Blockchain.LogServer do
     :ok = OrphanBlockTable.delete(block_hash) # Remove orphan entry, if one existed
     
     Enum.each(block.txs, fn tx -> :ok = TxHashIndex.insert(TX.hash(tx), block_hash) end)
-    
+
     {:ok, new_tip} = update_chain_state(log, tip, block)
     if block == new_tip do
       # TODO: eventually use pub/sub for reorgs
@@ -363,19 +369,19 @@ defmodule WC.Blockchain.LogServer do
     if is_longest do
       case find_first_parent_in_longest_chain(log, new_tip) do
 	{:ok, parent} ->
-	  {:ok, [_|added_hashes]} = find_block_range(log, new_tip, parent)
-	  {:ok, [_|removed_hashes]} = find_block_range(log, old_tip, parent)
-	  if length(removed_hashes) > 0 do
+	  {:ok, [_|added_block_hashes]} = find_block_range(log, new_tip, parent)
+	  {:ok, [_|removed_block_hashes]} = find_block_range(log, old_tip, parent)
+	  if length(removed_block_hashes) > 0 do
 	    Logger.info "-------------------"	      
 	    Logger.info "Chain re-organized:"
 	    Logger.info "Common parent: #{Block.hash(parent) |> Base.encode16}"
-	    Logger.info "Added: #{inspect(Enum.map(added_hashes, &Base.encode16/1))}"
-	    Logger.info "Removed: #{inspect(Enum.map(removed_hashes, &Base.encode16/1))}"
+	    Logger.info "Added: #{inspect(Enum.map(added_block_hashes, &Base.encode16/1))}"
+	    Logger.info "Removed: #{inspect(Enum.map(removed_block_hashes, &Base.encode16/1))}"
 	    Logger.info "-------------------"
 	  end
-	  for hash <- removed_hashes, do: :ok = ChainState.update_longest(hash, false)
-	  for hash <- added_hashes, do: :ok = ChainState.update_longest(hash, true)
-	  :ok = UTXOServer.update(removed_hashes, added_hashes)
+	  for hash <- removed_block_hashes, do: :ok = ChainState.update_longest(hash, false)
+	  for hash <- added_block_hashes, do: :ok = ChainState.update_longest(hash, true)
+	  :ok = UTXOServer.update(removed_block_hashes, added_block_hashes)
 	  {:ok, new_tip}
 	error ->
 	  error

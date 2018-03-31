@@ -1,4 +1,3 @@
-alias WC.Blockchain.Block, as: Block
 alias WC.Blockchain.BlockHeader, as: BlockHeader
 
 defmodule WC.Blockchain.ChainState do
