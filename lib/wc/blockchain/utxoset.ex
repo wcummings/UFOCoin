@@ -21,13 +21,13 @@ defmodule WC.Blockchain.UTXOSet do
     utxo_set
   end
 
-  @spec get_tx_from_utxo_set(TX.tx_hash, t) :: {:ok, TX.t} | {:error, :notfound}
-  def get_tx_from_utxo_set(tx_hash, utxo_set) do
-    case :ets.lookup(utxo_set.set, tx_hash) do
+  @spec get_output(TX.tx_hash, non_neg_integer, t) :: {:ok, Output.t} | {:error, :notfound}
+  def get_output(tx_hash, offset, utxo_set) do
+    case :ets.lookup(utxo_set.set, {tx_hash, offset}) do
       [] ->
 	{:error, :notfound}
-      [{^tx_hash, tx}] ->
-	{:ok, tx}
+      [{{^tx_hash, ^offset}, output}] ->
+	{:ok, output}
     end
   end
   

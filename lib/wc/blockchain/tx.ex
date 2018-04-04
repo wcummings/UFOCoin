@@ -1,5 +1,6 @@
 alias WC.Blockchain.Input, as: Input
 alias WC.Blockchain.Output, as: Output
+alias WC.Wallet.KeyStore, as: KeyStore
 
 require Logger
 
@@ -11,17 +12,36 @@ defmodule WC.Blockchain.TX do
   @type t :: %__MODULE__{version: non_neg_integer, inputs: list(Input.t), outputs: list(Output.t)}
   @type encoded_tx :: binary
   @type tx_hash :: binary
+  @type validation_error :: :negative_fee | {:bad_inputs, list(Input.t)}
 
-  @spec sign(binary, t) :: t
-  def sign(private_key, %__MODULE__{version: 1, inputs: inputs} = tx) do
-    # Set all input signatures to 0 to create the message we're going to sign
-    inputs2 = Enum.map(inputs, fn input -> %{input | signature: <<0 :: size(2048)>>} end)
-    # Encode full tx, w/ zero'd signatures
-    encoded_tx_without_signature = encode(%{tx | inputs: inputs2})
-    # Use encoded tx as message for signature
-    signature = :crypto.sign(:rsa, :rsa_digest_type, encoded_tx_without_signature, private_key)
-    inputs3 = Enum.map(inputs2, fn input -> %{input | signature: signature} end)
-    %{tx | inputs: inputs3}
+  @spec sign(Map.t, t) :: t
+  def sign(private_keys, %__MODULE__{version: 1, inputs: inputs} = tx) do
+    tx_without_signatures = encode_tx_without_signatures(tx)
+    inputs_with_signatures = Enum.map(inputs, fn input -> Input.sign(input, tx_without_signatures, private_keys[KeyStore.fingerprint(input.pubkey)]) end)
+    %{tx | inputs: inputs_with_signatures}
+  end
+
+  @doc """
+  Verifies a TX using a list of outputs corresponding to its inputs.
+  referenced_outputs must already be validated, and correctly ordered
+  for this to produce trustworthy results,
+  """
+  @spec verify(TX.t, list(Output.t)) :: {:error, validation_error} | :ok
+  def verify(tx = %__MODULE__{inputs: inputs, outputs: outputs}, referenced_outputs) do
+    fee = get_fee(outputs, referenced_outputs)
+    if fee < 0 do
+      {:error, :negative_fee}
+    else
+      invalid_inputs = Enum.with_index(inputs)
+      |> Enum.map(fn {input, i} -> {referenced_outputs[i], input} end)
+      |> Enum.map(fn {input, output} -> {input, Input.validate(input, output, tx)} end)
+      |> Enum.filter(fn {_, is_valid} -> is_valid end)
+      if length(invalid_inputs) > 0 do
+	{:error, {:bad_inputs, invalid_inputs}}
+      else
+	:ok
+      end
+    end
   end
 
   @spec hash(t) :: tx_hash
@@ -72,13 +92,28 @@ defmodule WC.Blockchain.TX do
     %__MODULE__{outputs: [%Output{fingerprint: fingerprint, value: @reward}]}
   end
 
-  @spec is_coinbase(list(t)) :: true | false
-  def is_coinbase(%__MODULE__{inputs: [], outputs: [%Output{value: @reward}]}) do
+  @spec is_coinbase?(t) :: true | false
+  def is_coinbase?(%__MODULE__{inputs: [], outputs: [%Output{value: @reward}]}) do
     true
   end
 
-  def is_coinbase(_) do
+  def is_coinbase?(_) do
     false
+  end
+
+  @spec encode_tx_without_signatures(t) :: t
+  def encode_tx_without_signatures(tx = %__MODULE__{inputs: inputs}) do
+    # Set all input signatures to 0 to create the message we're going to sign
+    inputs2 = Enum.map(inputs, fn input -> %{input | signature: <<0 :: size(2048)>>} end)
+    # Encode full tx, w/ zero'd signatures
+    encode(%{tx | inputs: inputs2})
+  end
+  
+  @spec get_fee(list(Output.t), list(Output.t)) :: integer
+  def get_fee(outputs, referenced_outputs) do
+    output_value = Enum.map(outputs, fn output -> output.value end) |> Enum.sum
+    input_value = Enum.map(referenced_outputs, fn output -> output.value end) |> Enum.sum
+    input_value - output_value
   end
 
 end

@@ -3,7 +3,7 @@ alias WC.Blockchain.TX, as: TX
 alias WC.Blockchain.UTXOSet, as: UTXOSet
 alias WC.Blockchain.Block, as: Block
 
-# TODO: cache UTXO db for last N blocks
+# TODO: cache UTXO db for last N blocks so rollbacks are less expensive
 
 defmodule WC.Blockchain.UTXOServer do
   @moduledoc """
@@ -25,9 +25,9 @@ defmodule WC.Blockchain.UTXOServer do
     GenServer.cast(__MODULE__, {:update, removed_block_hashes, added_block_hashes})
   end
 
-  @spec get_tx(TX.tx_hash) :: {:ok, TX.t} | {:error, :notfound}
-  def get_tx(tx_hash) do
-    GenServer.call(__MODULE__, {:get_tx, tx_hash})
+  @spec get_output(TX.tx_hash, non_neg_integer) :: {:ok, Output.t} | {:error, :notfound}
+  def get_output(tx_hash, offset) do
+    GenServer.call(__MODULE__, {:get_output, tx_hash, offset})
   end
   
   def handle_cast({:update, removed_block_hashes, added_block_hashes}, state = %{utxo_set: utxo_set}) do
@@ -46,8 +46,8 @@ defmodule WC.Blockchain.UTXOServer do
     {:noreply, state}
   end
 
-  def handle_call({:get_tx, tx_hash}, _from, state = %{utxo_set: utxo_set}) do
-    {:reply, UTXOSet.get_tx_from_utxo_set(tx_hash, utxo_set), state}
+  def handle_call({:get_tx, tx_hash, offset}, _from, state = %{utxo_set: utxo_set}) do
+    {:reply, UTXOSet.get_output(tx_hash, offset, utxo_set), state}
   end
 
 end

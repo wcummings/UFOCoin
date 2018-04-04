@@ -61,6 +61,8 @@ defmodule WC.Blockchain.Block do
     Map.equal?(block1, block2)
   end
 
+  # FIXME: pass previous block, and difficulty etc. as parameters here.
+  # Prepare them in BlockValidatorServer
   @spec validate(t) :: :ok | {:error, block_validation_error}
   def validate(new_block = %__MODULE__{header: block_header}) do
     case BlockHeader.check_nonce(block_header) do
