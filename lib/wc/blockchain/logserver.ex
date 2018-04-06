@@ -74,7 +74,7 @@ defmodule WC.Blockchain.LogServer do
 	{:ok, tx}
     end
   end
-  
+
   @spec get_tip() :: {:ok, Block.t}
   def get_tip do
     GenServer.call(__MODULE__, :get_tip)
@@ -125,7 +125,7 @@ defmodule WC.Blockchain.LogServer do
   def make_block_locator(tip) do
     GenServer.call(__MODULE__, {:make_block_locator, tip})
   end
-  
+
   #
   # GENSERVER CALLBACKS
   #

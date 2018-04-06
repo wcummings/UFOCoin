@@ -70,58 +70,8 @@ defmodule WC.Blockchain.Block do
     Map.equal?(block1, block2)
   end
 
-  # FIXME: pass previous block, and difficulty etc. as parameters here.
-  # Prepare them in BlockValidatorServer
-  @spec validate(t) :: :ok | {:error, block_validation_error}
-  def validate(new_block = %__MODULE__{header: block_header}) do
-    case BlockHeader.check_nonce(block_header) do
-      {true, _} ->
-	check_prev_block(new_block)
-      {false, _} ->
-	{:error, :badnonce}
-    end
-  end
-
-  def check_fake_merkle_hash(%__MODULE__{header: %BlockHeader{fake_merkle_hash: fake_merkle_hash}, txs: txs} = block) do
-    if :crypto.hash(:sha256, Enum.map(txs, &TX.encode/1)) == fake_merkle_hash do
-      check_prev_block(block)
-    else
-      {:error, :badmerklehash}
-    end
-  end
-
-  def check_prev_block(block = %__MODULE__{header: %BlockHeader{prev_block_hash: prev_block_hash}}) do
-    case LogServer.get_block_by_hash(prev_block_hash) do
-      {:error, :notfound} ->
-	{:error, :orphan}
-      {:ok, prev_block} ->
-	check_prev_block(block, prev_block)
-    end
-  end
-
-  def check_prev_block(block, prev_block) do
-    if (block.header.height - 1) == prev_block.header.height do
-      check_difficulty(block)
-    else
-      {:error, :badheight}
-    end
-  end
-
-  def check_difficulty(block) do
-    difficulty = get_difficulty(block)
-    if block.header.difficulty >= difficulty do
-      :ok
-    else
-      {:error, :baddifficulty}
-    end
-  end
-
-  # Includes block passed as argument in calculation, for generating new blocks.
-  def get_current_difficulty(block) do
-    blocks = LogServer.find_prev_blocks(144, block) ++ [block]
-    get_difficulty(blocks)
-  end
-
+  # FIXME: wrap in max(), so difficulty can only change so much per-day
+  @spec get_difficulty(list(Block.t)) :: non_neg_integer
   def get_difficulty(blocks) when is_list(blocks) do
     case length(blocks) do
       0 ->
@@ -135,13 +85,22 @@ defmodule WC.Blockchain.Block do
 	if (last.header.timestamp - first.header.timestamp) < (24 * 60 * 60 * 1000) do
 	  last.header.difficulty + 1
 	else
-	  last.header.difficulty - 1
+	  WC.Util.max(last.header.difficulty - 1, 1)
 	end
     end
   end
 
   def get_difficulty(block) do
     get_difficulty(LogServer.find_prev_blocks(144, block))
+  end
+
+  #
+  # PRIVATE
+  #
+
+  def get_current_difficulty(block) do
+    blocks = LogServer.find_prev_blocks(144, block) ++ [block]
+    get_difficulty(blocks)
   end
 
 end
