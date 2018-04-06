@@ -183,7 +183,7 @@ defmodule WC.P2P.Connection do
 	# TODO: do we tell the node we can't find it?
   	:ok
       {:ok, block_hash} ->
-	case LogServer.get_next_block_hashes_in_chain(@block_batch_size, block_hash) do
+	case LogServer.find_next_block_hashes_in_chain(@block_batch_size, block_hash) do
 	  [] ->
 	    # Do nothing
 	    nil

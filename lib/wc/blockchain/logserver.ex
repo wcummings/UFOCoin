@@ -90,8 +90,8 @@ defmodule WC.Blockchain.LogServer do
     GenServer.call(__MODULE__, {:exists, block_hash})
   end
   
-  @spec get_next_block_hashes_in_chain(non_neg_integer, BlockHeader.block_hash) :: list(BlockHeader.block_hash)
-  def get_next_block_hashes_in_chain(number_of_blocks, starting_block_hash) do
+  @spec find_next_block_hashes_in_chain(non_neg_integer, BlockHeader.block_hash) :: list(BlockHeader.block_hash)
+  def find_next_block_hashes_in_chain(number_of_blocks, starting_block_hash) do
     GenServer.call(__MODULE__, {:find_next_block_hashes_in_chain, number_of_blocks, starting_block_hash})
   end
 
@@ -174,7 +174,7 @@ defmodule WC.Blockchain.LogServer do
   end
 
   def handle_call({:find_next_block_hashes_in_chain, number_of_blocks, starting_block_hash}, _from, state = %{log: log}) do
-    {:reply, {:ok, find_next_block_hashes_in_chain(log, number_of_blocks, starting_block_hash)}, state}
+    {:reply, find_next_block_hashes_in_chain(log, number_of_blocks, starting_block_hash), state}
   end
 
   def handle_call({:find_prev_blocks, number_of_blocks}, _from, state = %{log: log, tip: tip}) do
@@ -299,7 +299,7 @@ defmodule WC.Blockchain.LogServer do
   end
   
   def find_next_block_hashes_in_chain(log, number_of_blocks, starting_block_hash, acc) do
-    case get_block_with_index(log, BlockHashIndex, starting_block_hash) do
+    case get_block_with_index(log, PrevBlockHashIndex, starting_block_hash) do
       {:ok, blocks} ->
 	case Enum.filter(blocks, fn block -> is_in_longest_chain(Block.hash(block)) end) do
 	  [] ->
