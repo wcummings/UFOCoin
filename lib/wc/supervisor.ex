@@ -9,7 +9,7 @@ defmodule WC.Supervisor do
     children = [
       worker(Cachex, [:block_cache, [limit: 500]]),
       {Registry, [keys: :duplicate, name: :connection_registry]},
-      supervisor(WC.Blockchain.Supervisor, []),
+      worker(WC.Blockchain.LogServer, []),
       supervisor(WC.P2P.Supervisor, []),
       worker(WC.Blockchain.BlockValidatorServer, []),
       supervisor(WC.Miner.Supervisor, [])

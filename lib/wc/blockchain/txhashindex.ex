@@ -18,7 +18,7 @@ defmodule WC.Blockchain.TxHashIndex do
     :ok
   end
 
-  @spec get_block_hash(TX.tx_hash) :: BlockHeader.block_hash
+  @spec get_block_hash(TX.tx_hash) :: {:ok, BlockHeader.block_hash} | {:error, :notfound}
   def get_block_hash(tx_hash) do
     case :ets.lookup(:tx_hash_index, tx_hash) do
       [^tx_hash, block_hash] ->

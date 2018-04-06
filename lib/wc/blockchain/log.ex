@@ -1,3 +1,5 @@
+alias WC.Blockchain.Block, as: Block
+
 require Logger
 
 defmodule WC.Blockchain.Log do
@@ -6,7 +8,7 @@ defmodule WC.Blockchain.Log do
 
   @opaque t :: %__MODULE__{}
 
-  @spec init() :: {:ok, __MODULE__.t} | {:error, :_}
+  @spec init() :: {:ok, t} | {:error, :_}
   def init do
     data_dir = Application.get_env(:wc, :data_dir)
     init(Path.join([data_dir, "blocks.dat"]))
@@ -28,7 +30,7 @@ defmodule WC.Blockchain.Log do
     offset == 0
   end
   
-  @spec read_block(t, non_neg_integer()) :: {:ok, {binary(), non_neg_integer()}} | {:error, :eof}
+  @spec read_block(t, non_neg_integer()) :: {:ok, {Block.encoded_block, non_neg_integer()}} | {:error, :eof}
   def read_block(%__MODULE__{file: file}, offset) do
     {:ok, ^offset} = :file.position(file, offset)
     # Read 4 byte length prefix
@@ -43,7 +45,7 @@ defmodule WC.Blockchain.Log do
     end
   end
 
-  @spec append_block(t, binary()) :: non_neg_integer()
+  @spec append_block(t, Block.encoded_block) :: non_neg_integer()
   def append_block(%__MODULE__{file: file}, encoded_block) do
     {:ok, offset} = :file.position(file, :eof)
     :ok = :file.write(file, [encode_length(:erlang.iolist_size(encoded_block)), encoded_block])

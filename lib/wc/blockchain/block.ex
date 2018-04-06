@@ -9,9 +9,18 @@ defmodule WC.Blockchain.Block do
   defstruct [:header, :txs]
 
   @type block_validation_error :: :notfound | :orphan | :badheight | :alreadyaccepted | :baddifficulty | :badmerklehash
-  @type encoded_block :: binary
+  @type encoded_block :: iodata
   @type t :: %__MODULE__{header: BlockHeader.t, txs: list(TX.t)}
 
+  @spec genesis_block() :: t
+  def genesis_block do
+    %__MODULE__{header: %BlockHeader{prev_block_hash: <<0 :: size(256)>>,
+				     difficulty: 1,
+				     height: 0,
+				     fake_merkle_hash: <<0 :: size(256)>>,
+				     timestamp: 0}, txs: []}    
+  end
+  
   @spec encode(t) :: encoded_block
   def encode(%__MODULE__{header: block_header, txs: txs}) do
     # Create a compact representation of the transaction

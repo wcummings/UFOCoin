@@ -10,11 +10,11 @@ defmodule WC.Blockchain.TX do
   @reward 5000
   
   @type t :: %__MODULE__{version: non_neg_integer, inputs: list(Input.t), outputs: list(Output.t)}
-  @type encoded_tx :: binary
+  @type encoded_tx :: iodata
   @type tx_hash :: binary
   @type validation_error :: :negative_fee | {:bad_inputs, list(Input.t)}
 
-  @spec sign(Map.t, t) :: t
+  @spec sign(map(), t) :: t
   def sign(private_keys, %__MODULE__{version: 1, inputs: inputs} = tx) do
     tx_without_signatures = encode_tx_without_signatures(tx)
     inputs_with_signatures = Enum.map(inputs, fn input -> Input.sign(input, tx_without_signatures, private_keys[KeyStore.fingerprint(input.pubkey)]) end)
@@ -26,7 +26,7 @@ defmodule WC.Blockchain.TX do
   referenced_outputs must already be validated, and correctly ordered
   for this to produce trustworthy results,
   """
-  @spec verify(TX.t, list(Output.t)) :: {:error, validation_error} | :ok
+  @spec verify(t, list(Output.t)) :: {:error, validation_error} | :ok
   def verify(tx = %__MODULE__{inputs: inputs, outputs: outputs}, referenced_outputs) do
     fee = get_fee(outputs, referenced_outputs)
     if fee < 0 do
@@ -34,7 +34,7 @@ defmodule WC.Blockchain.TX do
     else
       invalid_inputs = Enum.with_index(inputs)
       |> Enum.map(fn {input, i} -> {referenced_outputs[i], input} end)
-      |> Enum.map(fn {input, output} -> {input, Input.validate(input, output, tx)} end)
+      |> Enum.map(fn {input, output} -> {input, Input.validate(input, output, encode(tx))} end)
       |> Enum.filter(fn {_, is_valid} -> is_valid end)
       if length(invalid_inputs) > 0 do
 	{:error, {:bad_inputs, invalid_inputs}}
@@ -77,7 +77,7 @@ defmodule WC.Blockchain.TX do
                inputs :: binary-size(inputs_length),
                outputs_length :: size(32),
                outputs :: binary-size(outputs_length), rest :: binary>>, acc) do
-    decoded_inputs = for <<input :: binary-size(97) <- inputs>>, do: Input.decode(input)
+    decoded_inputs = for <<input :: binary-size(321) <- inputs>>, do: Input.decode(input)
     decoded_outputs = for <<output :: binary-size(36) <- outputs>>, do: Output.decode(output)
     decode(rest, [%__MODULE__{inputs: decoded_inputs, outputs: decoded_outputs}|acc])
   end
@@ -101,7 +101,7 @@ defmodule WC.Blockchain.TX do
     false
   end
 
-  @spec encode_tx_without_signatures(t) :: t
+  @spec encode_tx_without_signatures(t) :: encoded_tx
   def encode_tx_without_signatures(tx = %__MODULE__{inputs: inputs}) do
     # Set all input signatures to 0 to create the message we're going to sign
     inputs2 = Enum.map(inputs, fn input -> %{input | signature: <<0 :: size(2048)>>} end)

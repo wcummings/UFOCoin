@@ -9,6 +9,7 @@ alias WC.Blockchain.ChainState, as: ChainState
 alias WC.Blockchain.OrphanBlockTable, as: OrphanBlockTable
 alias WC.Blockchain.InvItem, as: InvItem
 alias WC.Blockchain.TX, as: TX
+alias WC.Blockchain.Input, as: Input
 alias WC.Blockchain.TxHashIndex, as: TxHashIndex
 alias WC.Blockchain.UTXOSet, as: UTXOSet
 alias WC.Miner.MinerServer, as: MinerServer
@@ -34,7 +35,7 @@ defmodule WC.Blockchain.LogServer do
     {:ok, log} = BlockchainLog.init
     if BlockchainLog.is_empty?(log) do
       Logger.info "Inserting genesis block..."
-      BlockchainLog.append_block(log, Block.encode(WC.genesis_block))
+      BlockchainLog.append_block(log, Block.encode(Block.genesis_block))
     end
     # Setup ets tables for indexes
     :ok = BlockHashIndex.init
@@ -94,7 +95,7 @@ defmodule WC.Blockchain.LogServer do
     GenServer.call(__MODULE__, {:find_next_block_hashes_in_chain, number_of_blocks, starting_block_hash})
   end
 
-  @spec find_first_block_hash_in_longest_chain(list(BlockHeader.block_hash)) :: {:ok, BlockHeader.block_hash} | {:error, :notfound}
+  @spec find_first_block_hash_in_longest_chain(list(BlockHeader.block_hash)) :: {:ok, BlockHeader.block_hash} | {:error, any}
   def find_first_block_hash_in_longest_chain(block_hash) do
     GenServer.call(__MODULE__, {:find_first_block_hash_in_longest_chain, block_hash})
   end
@@ -241,9 +242,9 @@ defmodule WC.Blockchain.LogServer do
     end
   end
   
-  @spec make_block_locator(Blockchain.t, Block.t) :: list(BlockHeader.block_hash)
+  @spec make_block_locator(BlockchainLog.t, Block.t) :: list(BlockHeader.block_hash)
   def make_block_locator(log, tip) do
-    genesis_block_hash = Block.hash(WC.genesis_block)
+    genesis_block_hash = Block.hash(Block.genesis_block)
     dense_hashes = for block <- find_prev_blocks(log, 10, tip), do: Block.hash(block)
     if tip.header.height < 10 do
       dense_hashes ++ [genesis_block_hash]
@@ -284,7 +285,7 @@ defmodule WC.Blockchain.LogServer do
     if (block.header.height == 0) or (tip.header.height - block.header.height == number_of_blocks) do
       acc
     else
-      find_prev_blocks(number_of_blocks, block, [block|acc])
+      find_prev_blocks(log, number_of_blocks, block, [block|acc])
     end
   end
   
@@ -305,7 +306,7 @@ defmodule WC.Blockchain.LogServer do
 	    acc
 	  [next_block] ->
 	    next_block_hash = Block.hash(next_block)
-	    find_next_block_hashes_in_chain(number_of_blocks - 1, next_block_hash, [next_block_hash|acc])
+	    find_next_block_hashes_in_chain(log, number_of_blocks - 1, next_block_hash, [next_block_hash|acc])
 	end
       {:error, :notfound} ->
 	acc
@@ -358,6 +359,11 @@ defmodule WC.Blockchain.LogServer do
     
   end
 
+  def get_block_with_index!(log, index, block_hash) do
+    {:ok, block} = get_block_with_index(log, index, block_hash)
+    block
+  end
+    
   def get_block_with_index(log, index, block_hash) do
     case index.get_offset(block_hash) do
       {:error, :notfound} ->
@@ -386,10 +392,10 @@ defmodule WC.Blockchain.LogServer do
 
   def index_blocks(pid) do
     fn ->
-      # Can't share file handles across processes
+      # Can't share (raw) file handles across processes
       {:ok, log} = BlockchainLog.init
       Logger.info "Indexing blocks..."
-      tip = index_blocks(log, 0, WC.genesis_block)
+      tip = index_blocks(log, 0, Block.genesis_block)
       send pid, {:index_complete, tip}
     end
   end
@@ -424,6 +430,7 @@ defmodule WC.Blockchain.LogServer do
     if is_longest do
       case find_first_parent_in_longest_chain(log, new_tip) do
 	{:ok, parent} ->
+	  #1. Update longest chain
 	  {:ok, [_|added_block_hashes]} = find_block_range(log, new_tip, parent)
 	  {:ok, [_|removed_block_hashes]} = find_block_range(log, old_tip, parent)
 	  if length(removed_block_hashes) > 0 do
@@ -436,8 +443,20 @@ defmodule WC.Blockchain.LogServer do
 	  end
 	  for hash <- removed_block_hashes, do: :ok = ChainState.update_longest(hash, false)
 	  for hash <- added_block_hashes, do: :ok = ChainState.update_longest(hash, true)
-	  # tx_map
-	  UTXOSet.update(removed_block_hashes, added_block_hashes)
+	  # 2. Update UTXO set
+	  # 2.1. Fetch added and removed blocks for tx's
+	  removed_blocks = Enum.map(removed_block_hashes, fn block_hash -> get_block_with_index!(log, BlockHashIndex, block_hash) end)
+	  added_blocks = Enum.map(added_block_hashes, fn block_hash -> get_block_with_index!(log, BlockHashIndex, block_hash) end)
+	  # 2.2. Fetch tx's referenced in inputs to removed tx's	  
+	  tx_map = Enum.flat_map(removed_blocks, fn %Block{txs: txs} -> txs end)
+	  |> Enum.flat_map(fn tx -> tx.inputs end)
+	  |> Enum.map(fn %Input{tx_hash: tx_hash} -> tx_hash end)
+	  |> Enum.map(fn tx_hash ->
+	    {:ok, tx} = get_tx(log, tx_hash)
+	    tx
+	  end)
+	  |> Enum.group_by(&TX.hash/1)
+	  :ok = UTXOSet.update(removed_blocks, added_blocks, tx_map)
 	  {:ok, new_tip}
 	error ->
 	  error

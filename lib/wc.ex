@@ -1,19 +1,12 @@
 require Logger
 
-alias WC.Blockchain.Block, as: Block
-alias WC.Blockchain.BlockHeader, as: BlockHeader
 alias WC.Blockchain.OrphanBlockTable, as: OrphanBlockTable
 alias WC.P2P.AddrTable, as: P2PAddrTable
 alias WC.Wallet.KeyStore, as: KeyStore
-alias WC.P2P.UPnPServer, as: UPnPServer
+alias WC.P2P.UPnP, as: UPnP
 
 defmodule WC do
-  @genesis_block %Block{header: %BlockHeader{prev_block_hash: <<0 :: size(256)>>, difficulty: 1, height: 0, timestamp: 0}, txs: []}
   @version "ALPHA"
-  
-  def genesis_block do
-    @genesis_block
-  end
 
   def version do
     @version
@@ -121,7 +114,7 @@ defmodule WC do
       {:ip, ip} ->
 	ip
       {:nat, external_port} ->
-	case UPnPServer.get_ip(Application.get_env(:wc, :port), external_port, 0) do
+	case UPnP.get_ip(Application.get_env(:wc, :port), external_port, 0) do
 	  {:ok, ip, _nat_context} ->
 	    ip
 	  _ ->

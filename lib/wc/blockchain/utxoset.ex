@@ -2,16 +2,17 @@ alias WC.Blockchain.BlockHeader, as: BlockHeader
 alias WC.Blockchain.TX, as: TX
 alias WC.Blockchain.Block, as: Block
 alias WC.Blockchain.BlockHeader, as: BlockHeader
+alias WC.Blockchain.Output, as: Output
 
 defmodule WC.Blockchain.UTXOSet do
 
   @spec init :: :ok
   def init do
-    :utxo_set = :ets.new(:utxo_set, [:named_set, :public, :set])
+    :utxo_set = :ets.new(:utxo_set, [:named_table, :public, :set])
     :ok
   end
 
-  @spec update(list(BlockHeader.block_hash), list(BlockHeader.block_hash), Map.t) :: :ok
+  @spec update(list(BlockHeader.block_hash), list(BlockHeader.block_hash), map()) :: :ok
   def update(removed_blocks, added_blocks, tx_map) do
     :ok = rollback_blocks(removed_blocks, tx_map)
     :ok = insert_blocks(added_blocks)
@@ -33,28 +34,28 @@ defmodule WC.Blockchain.UTXOSet do
 
   def rollback_blocks([block|rest], tx_map) do
     # 1. Delete outputs from the block
-    Enum.each(utxo_keys(block), fn key -> :ok = :ets.delete(:utxo_set, key) end)
+    Enum.each(utxo_keys(block), fn key -> :true = :ets.delete(:utxo_set, key) end)
     # 2. Re-add outputs referenced in the block's inputs
     Enum.flat_map(block.txs, fn tx -> get_utxo_values_for_inputs(tx, tx_map) end)
     |> Enum.each(fn value -> :true = :ets.insert(:utxo_set, value) end)
     rollback_blocks(rest, tx_map)
   end
 
-  def rollback_blocks([], _, _) do
+  def rollback_blocks([], _) do
     :ok
   end
 
   def insert_blocks([block|rest]) do
-    Enum.each(utxo_keys(block), fn key -> :ok = :ets.delete(:utxo_set, key) end)
+    Enum.each(utxo_keys(block), fn key -> :true = :ets.delete(:utxo_set, key) end)
     Enum.each(utxo_values(block), fn value -> :true = :ets.insert(:utxo_set, value) end)
     insert_blocks(rest)
   end
 
-  def insert_blocks([], _) do
+  def insert_blocks([]) do
     :ok
   end
 
-  @spec get_utxo_values_for_inputs(TX.t, Map.t) :: list({{TX.tx_hash, non_neg_integer}, Output.t})
+  @spec get_utxo_values_for_inputs(TX.t, map()) :: list({{TX.tx_hash, non_neg_integer}, Output.t})
   def get_utxo_values_for_inputs(%TX{inputs: inputs}, tx_map) do
     for input <- inputs do
       tx = tx_map[input.tx_hash]
