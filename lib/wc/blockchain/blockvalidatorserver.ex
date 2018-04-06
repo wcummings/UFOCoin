@@ -64,7 +64,7 @@ defmodule WC.Blockchain.BlockValidatorServer do
   def send_getblocks do
     # Check that we don't spam the network during the initial indexing    
     # if LogServer.index_complete?() do
-    :ok = P2PConnectionRegistry.broadcast("packet", %P2PPacket{proc: :getblocks, extra_data: LogServer.get_block_locator()})
+    :ok = P2PConnectionRegistry.broadcast("packet", %P2PPacket{proc: :getblocks, extra_data: LogServer.make_block_locator()})
     # end
   end
 

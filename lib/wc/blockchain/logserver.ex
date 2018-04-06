@@ -10,7 +10,7 @@ alias WC.Blockchain.OrphanBlockTable, as: OrphanBlockTable
 alias WC.Blockchain.InvItem, as: InvItem
 alias WC.Blockchain.TX, as: TX
 alias WC.Blockchain.TxHashIndex, as: TxHashIndex
-alias WC.Blockchain.UTXOServer, as: UTXOServer
+alias WC.Blockchain.UTXOSet, as: UTXOSet
 alias WC.Miner.MinerServer, as: MinerServer
 alias WC.P2P.Packet, as: P2PPacket
 alias WC.P2P.ConnectionRegistry, as: P2PConnectionRegistry
@@ -41,6 +41,7 @@ defmodule WC.Blockchain.LogServer do
     :ok = PrevBlockHashIndex.init
     :ok = TxHashIndex.init
     :ok = ChainState.init
+    :ok = UTXOSet.init
     # Kick off indexer process
     spawn_link index_blocks(self())
     {:ok, %{@initial_state | log: log}}
@@ -90,26 +91,7 @@ defmodule WC.Blockchain.LogServer do
   
   @spec get_next_block_hashes_in_chain(non_neg_integer, BlockHeader.block_hash) :: list(BlockHeader.block_hash)
   def get_next_block_hashes_in_chain(number_of_blocks, starting_block_hash) do
-    Enum.reverse(get_next_block_hashes_in_chain(number_of_blocks, starting_block_hash, []))
-  end
-  
-  def get_next_block_hashes_in_chain(0, _, acc) do
-    acc
-  end
-  
-  def get_next_block_hashes_in_chain(number_of_blocks, starting_block_hash, acc) do
-    case get_blocks_by_prev_hash(starting_block_hash) do
-      {:ok, blocks} ->
-	case Enum.filter(blocks, fn block -> is_in_longest_chain(Block.hash(block)) end) do
-	  [] ->
-	    acc
-	  [next_block] ->
-	    next_block_hash = Block.hash(next_block)
-	    get_next_block_hashes_in_chain(number_of_blocks - 1, next_block_hash, [next_block_hash|acc])
-	end
-      {:error, :notfound} ->
-	acc
-    end
+    GenServer.call(__MODULE__, {:find_next_block_hashes_in_chain, number_of_blocks, starting_block_hash})
   end
 
   @spec find_first_block_hash_in_longest_chain(list(BlockHeader.block_hash)) :: {:ok, BlockHeader.block_hash} | {:error, :notfound}
@@ -117,67 +99,32 @@ defmodule WC.Blockchain.LogServer do
     GenServer.call(__MODULE__, {:find_first_block_hash_in_longest_chain, block_hash})
   end
 
-  def get_prev_blocks(number_of_blocks) do
-    {:ok, tip} = get_tip()
-    get_prev_blocks(number_of_blocks, tip)
-  end
-  
-  def get_prev_blocks(number_of_blocks, tip) do
-    if tip.header.height == 0 do
-      []
-    else
-      get_prev_blocks(number_of_blocks, tip, [])
-    end
-  end
-  
-  def get_prev_blocks(number_of_blocks, tip, acc) do
-    {:ok, block} = get_block_by_hash(tip.header.prev_block_hash)
-    if (block.header.height == 0) or (tip.header.height - block.header.height == number_of_blocks) do
-      acc
-    else
-      get_prev_blocks(number_of_blocks, block, [block|acc])
-    end
+  @spec find_prev_blocks(non_neg_integer) :: list(Block.t)
+  def find_prev_blocks(number_of_blocks) do
+    GenServer.call(__MODULE__, {:find_prev_blocks, number_of_blocks})
   end
 
+  @spec find_prev_blocks(non_neg_integer, Block.t) :: list(Block.t)
+  def find_prev_blocks(number_of_blocks, tip) do
+    GenServer.call(__MODULE__, {:find_prev_blocks, number_of_blocks, tip})
+  end
+  
   @spec index_complete? :: true | false
   def index_complete? do
     GenServer.call(__MODULE__, :index_complete)
   end
 
   @doc "Build a list of block hashes from newest to genesis, dense to start, then sparse"
-  @spec get_block_locator() :: list(BlockHeader.block_hash)
-  def get_block_locator do
-    {:ok, tip} = get_tip()
-    get_block_locator(tip)
-  end
-  
-  def get_block_locator(tip) do
-    genesis_block_hash = Block.hash(WC.genesis_block)
-    dense_hashes = for block <- get_prev_blocks(10, tip), do: Block.hash(block)
-    if tip.header.height < 10 do
-      dense_hashes ++ [genesis_block_hash]
-    else
-      dense_hashes ++ get_prev_block_hashes_sparse(tip) ++ [genesis_block_hash]
-    end
+  @spec make_block_locator() :: list(BlockHeader.block_hash)
+  def make_block_locator do
+    GenServer.call(__MODULE__, :make_block_locator)
   end
 
-  def get_prev_block_hashes_sparse(tip) do
-    get_prev_block_hashes_sparse(tip, 1, 0, [])
+  @spec make_block_locator(Block.t) :: list(BlockHeader.block_hash)
+  def make_block_locator(tip) do
+    GenServer.call(__MODULE__, {:make_block_locator, tip})
   end
   
-  def get_prev_block_hashes_sparse(tip, step, count, acc) do
-    {:ok, block} = get_block_by_hash(tip.header.prev_block_hash)
-    if block.header.height == 0 do
-      acc
-    else
-      if count == step do
-	get_prev_block_hashes_sparse(block, step * 2, 0, [Block.hash(block)|acc])
-      else
-	get_prev_block_hashes_sparse(block, step, count + 1, acc)
-      end
-    end
-  end
-
   #
   # GENSERVER CALLBACKS
   #
@@ -225,6 +172,30 @@ defmodule WC.Blockchain.LogServer do
     end
   end
 
+  def handle_call({:find_next_block_hashes_in_chain, number_of_blocks, starting_block_hash}, _from, state = %{log: log}) do
+    {:reply, {:ok, find_next_block_hashes_in_chain(log, number_of_blocks, starting_block_hash)}, state}
+  end
+
+  def handle_call({:find_prev_blocks, number_of_blocks}, _from, state = %{log: log, tip: tip}) do
+    {:reply, find_prev_blocks(log, number_of_blocks, tip), state}
+  end
+
+  def handle_call({:find_prev_blocks, number_of_blocks, tip}, _from, state = %{log: log}) do
+    {:reply, find_prev_blocks(log, number_of_blocks, tip), state}
+  end
+
+  def handle_call(:make_block_locator, _from, state = %{log: log, tip: tip}) do
+    {:reply, make_block_locator(log, tip), state}
+  end
+  
+  def handle_call({:make_block_locator, tip}, _from, state = %{log: log}) do
+    {:reply, make_block_locator(log, tip), state}
+  end
+
+  def handle_call({:get_tx, tx_hash}, _from, state = %{log: log}) do
+    {:reply, get_tx(log, tx_hash), state}
+  end
+
   def handle_cast({:update, block}, state = %{tip: tip, log: log}) do
     encoded_block = Block.encode(block)
     block_hash = Block.hash(block)
@@ -259,6 +230,89 @@ defmodule WC.Blockchain.LogServer do
   # PRIVATE
   #
 
+  @spec get_tx(BlockchainLog.t, BlockHeader.block_hash) :: {:ok, TX.t} | {:error, :notfound}
+  def get_tx(log, tx_hash) do
+    case get_block_with_index(log, TxHashIndex, tx_hash) do
+      {:error, error} ->
+	{:error, error}
+      {:ok, block} ->
+	[tx] = Enum.filter(block.txs, fn tx -> TX.hash(tx) == tx_hash end)
+	{:ok, tx}
+    end
+  end
+  
+  @spec make_block_locator(Blockchain.t, Block.t) :: list(BlockHeader.block_hash)
+  def make_block_locator(log, tip) do
+    genesis_block_hash = Block.hash(WC.genesis_block)
+    dense_hashes = for block <- find_prev_blocks(log, 10, tip), do: Block.hash(block)
+    if tip.header.height < 10 do
+      dense_hashes ++ [genesis_block_hash]
+    else
+      dense_hashes ++ make_prev_block_hashes_sparse(log, tip) ++ [genesis_block_hash]
+    end
+  end
+
+  def make_prev_block_hashes_sparse(log, tip) do
+    make_prev_block_hashes_sparse(log, tip, 1, 0, [])
+  end
+  
+  def make_prev_block_hashes_sparse(log, tip, step, count, acc) do
+    {:ok, block} = get_block_with_index(log, BlockHashIndex, tip.header.prev_block_hash)
+    if block.header.height == 0 do
+      acc
+    else
+      if count == step do
+	make_prev_block_hashes_sparse(log, block, step * 2, 0, [Block.hash(block)|acc])
+      else
+	make_prev_block_hashes_sparse(log, block, step, count + 1, acc)
+      end
+    end
+  end
+
+  
+  @spec find_prev_blocks(BlockchainLog.t, non_neg_integer, Block.t) :: list(Block.t)
+  def find_prev_blocks(log, number_of_blocks, tip) do
+    if tip.header.height == 0 do
+      []
+    else
+      find_prev_blocks(log, number_of_blocks, tip, [])
+    end
+  end
+  
+  def find_prev_blocks(log, number_of_blocks, tip, acc) do
+    {:ok, block} = get_block_with_index(log, BlockHashIndex, tip.header.prev_block_hash)
+    if (block.header.height == 0) or (tip.header.height - block.header.height == number_of_blocks) do
+      acc
+    else
+      find_prev_blocks(number_of_blocks, block, [block|acc])
+    end
+  end
+  
+  @spec find_next_block_hashes_in_chain(BlockchainLog.t, non_neg_integer, BlockHeader.block_hash) :: list(BlockHeader.block_hash)
+  def find_next_block_hashes_in_chain(log, number_of_blocks, starting_block_hash) do
+    Enum.reverse(find_next_block_hashes_in_chain(log, number_of_blocks, starting_block_hash, []))
+  end
+  
+  def find_next_block_hashes_in_chain(_, 0, _, acc) do
+    acc
+  end
+  
+  def find_next_block_hashes_in_chain(log, number_of_blocks, starting_block_hash, acc) do
+    case get_block_with_index(log, BlockHashIndex, starting_block_hash) do
+      {:ok, blocks} ->
+	case Enum.filter(blocks, fn block -> is_in_longest_chain(Block.hash(block)) end) do
+	  [] ->
+	    acc
+	  [next_block] ->
+	    next_block_hash = Block.hash(next_block)
+	    find_next_block_hashes_in_chain(number_of_blocks - 1, next_block_hash, [next_block_hash|acc])
+	end
+      {:error, :notfound} ->
+	acc
+    end
+  end
+
+  @spec is_in_longest_chain(BlockHeader.block_hash) :: true | false
   def is_in_longest_chain(block_hash) do
     case ChainState.get_height_and_cum_difficulty(block_hash) do
       {:error, :notfound} ->
@@ -267,7 +321,8 @@ defmodule WC.Blockchain.LogServer do
 	in_longest
     end
   end
-  
+
+  @spec find_first_parent_in_longest_chain(BlockchainLog.t, Block.t) :: {:ok, Block.t} | {:error, :notfound}
   def find_first_parent_in_longest_chain(log, block) do
     prev_block_hash = block.header.prev_block_hash    
     case get_block_with_index(log, BlockHashIndex, prev_block_hash) do
@@ -381,7 +436,8 @@ defmodule WC.Blockchain.LogServer do
 	  end
 	  for hash <- removed_block_hashes, do: :ok = ChainState.update_longest(hash, false)
 	  for hash <- added_block_hashes, do: :ok = ChainState.update_longest(hash, true)
-	  :ok = UTXOServer.update(removed_block_hashes, added_block_hashes)
+	  # tx_map
+	  UTXOSet.update(removed_block_hashes, added_block_hashes)
 	  {:ok, new_tip}
 	error ->
 	  error

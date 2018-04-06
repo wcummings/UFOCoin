@@ -109,7 +109,7 @@ defmodule WC.Blockchain.Block do
 
   # Includes block passed as argument in calculation, for generating new blocks.
   def get_current_difficulty(block) do
-    blocks = LogServer.get_prev_blocks(144, block) ++ [block]
+    blocks = LogServer.find_prev_blocks(144, block) ++ [block]
     get_difficulty(blocks)
   end
 
@@ -132,7 +132,7 @@ defmodule WC.Blockchain.Block do
   end
 
   def get_difficulty(block) do
-    get_difficulty(LogServer.get_prev_blocks(144, block))
+    get_difficulty(LogServer.find_prev_blocks(144, block))
   end
 
 end

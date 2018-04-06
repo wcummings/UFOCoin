@@ -66,7 +66,7 @@ defmodule WC.P2P.Connection do
 
   def handle_info(:send_getblocks, state = %{socket: socket}) do
     if LogServer.index_complete? do
-      :ok = send_packet(socket, %P2PPacket{proc: :getblocks, extra_data: LogServer.get_block_locator()})
+      :ok = send_packet(socket, %P2PPacket{proc: :getblocks, extra_data: LogServer.make_block_locator()})
     end
     {:noreply, state}
   end
@@ -79,7 +79,7 @@ defmodule WC.P2P.Connection do
   end
 
   def handle_info({:connection_registry, "new_tip", tip}, state = %{socket: socket}) do
-    :ok = send_packet(socket, %P2PPacket{proc: :getblocks, extra_data: LogServer.get_block_locator(tip)})
+    :ok = send_packet(socket, %P2PPacket{proc: :getblocks, extra_data: LogServer.make_block_locator(tip)})
     {:noreply, state}
   end
 
@@ -232,7 +232,7 @@ defmodule WC.P2P.Connection do
 
   def handle_end_of_batch(block_hash, state = %{last_block_hash_in_batch: block_hash, socket: socket}) do
     # :ok = send_packet(socket, %P2PPacket{proc: :getblocks, extra_data: [block_hash]})
-    :ok = send_packet(socket, %P2PPacket{proc: :getblocks, extra_data: LogServer.get_block_locator()})
+    :ok = send_packet(socket, %P2PPacket{proc: :getblocks, extra_data: LogServer.make_block_locator()})
     %{state | last_block_hash_in_batch: nil}
   end
 
