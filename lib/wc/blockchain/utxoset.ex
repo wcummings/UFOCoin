@@ -1,3 +1,5 @@
+require Logger
+
 alias WC.Blockchain.BlockHeader, as: BlockHeader
 alias WC.Blockchain.TX, as: TX
 alias WC.Blockchain.Block, as: Block
@@ -6,6 +8,8 @@ alias WC.Blockchain.Output, as: Output
 
 defmodule WC.Blockchain.UTXOSet do
 
+  @compile {:parse_transform, :ms_transform}
+  
   @spec init :: :ok
   def init do
     :utxo_set = :ets.new(:utxo_set, [:named_table, :public, :set])
@@ -26,6 +30,15 @@ defmodule WC.Blockchain.UTXOSet do
       [{{^tx_hash, ^offset}, output}] ->
 	{:ok, output}
     end
+  end
+
+  @spec get_outputs_for_fingerprint(binary()) :: list(Output.t)
+  def get_outputs_for_fingerprint(fingerprint) do
+    # FIXME
+    # :ets.select(:utxo_set, :ets.fun2ms(fn {_, output = %Output{fingerprint: ^fingerprint}} -> output end))
+    # :ets.match(:utxo_set, {:_, %Output{fingerprint: fingerprint}})
+    :ets.tab2list(:utxo_set)
+    |> Enum.map(fn {_, output} -> output end)
   end
   
   #

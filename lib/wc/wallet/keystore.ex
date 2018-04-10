@@ -46,4 +46,9 @@ defmodule WC.Wallet.KeyStore do
     Base58Check.encode58check(128, fingerprint)
   end
 
+  def decode_address(address) do
+    {_, fingerprint} = Base58Check.decode58check(address)
+    fingerprint
+  end
+
 end

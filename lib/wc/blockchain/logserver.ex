@@ -12,7 +12,6 @@ alias WC.Blockchain.TX, as: TX
 alias WC.Blockchain.Input, as: Input
 alias WC.Blockchain.TxHashIndex, as: TxHashIndex
 alias WC.Blockchain.UTXOSet, as: UTXOSet
-alias WC.Blockchain.Balances, as: Balances
 alias WC.Miner.MinerServer, as: MinerServer
 alias WC.P2P.Packet, as: P2PPacket
 alias WC.P2P.ConnectionRegistry, as: P2PConnectionRegistry
@@ -44,7 +43,6 @@ defmodule WC.Blockchain.LogServer do
     :ok = TxHashIndex.init
     :ok = ChainState.init
     :ok = UTXOSet.init
-    :ok = Balances.init
     # Kick off indexer process
     spawn_link index_blocks(self())
     {:ok, %{@initial_state | log: log}}
@@ -462,7 +460,6 @@ defmodule WC.Blockchain.LogServer do
 	  |> Enum.map(fn tx_hash -> get_tx!(log, tx_hash) end)
 	  |> Enum.group_by(&TX.hash/1)
 	  :ok = UTXOSet.update(removed_blocks, added_blocks, tx_map)
-	  :ok = Balances.update(removed_blocks, added_blocks, tx_map)
 	  {:ok, new_tip}
 	error ->
 	  error

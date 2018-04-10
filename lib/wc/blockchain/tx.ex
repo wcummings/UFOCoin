@@ -88,12 +88,17 @@ defmodule WC.Blockchain.TX do
 
   @spec coinbase :: t
   def coinbase do
+    # We need to make a unique input to avoid duplicate coinbase tx's in different blocks
+    input = %Input{tx_hash: <<0 :: size(256)>>,
+		   offset: 0,
+		   pubkey: <<0 :: size(256)>>,
+		   signature: :crypto.strong_rand_bytes(256)}
     {_, fingerprint} = Base58Check.decode58check(Application.get_env(:wc, :coinbase_address))
-    %__MODULE__{outputs: [%Output{fingerprint: fingerprint, value: @reward}]}
+    %__MODULE__{inputs: [input], outputs: [%Output{fingerprint: fingerprint, value: @reward}]}
   end
 
   @spec is_coinbase?(t) :: true | false
-  def is_coinbase?(%__MODULE__{inputs: [], outputs: [%Output{value: @reward}]}) do
+  def is_coinbase?(%__MODULE__{outputs: [%Output{value: @reward}]}) do
     true
   end
 
