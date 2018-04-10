@@ -9,6 +9,7 @@ alias WC.Blockchain.ChainState, as: ChainState
 alias WC.Blockchain.OrphanBlockTable, as: OrphanBlockTable
 alias WC.Blockchain.InvItem, as: InvItem
 alias WC.Blockchain.TX, as: TX
+alias WC.Blockchain.Input, as: Input
 alias WC.Blockchain.TxHashIndex, as: TxHashIndex
 alias WC.Blockchain.UTXOSet, as: UTXOSet
 alias WC.Miner.MinerServer, as: MinerServer
@@ -81,7 +82,7 @@ defmodule WC.Blockchain.LogServer do
 
   @spec update(Block.t) :: :ok
   def update(block) do
-    GenServer.call(__MODULE__, {:update, block})
+    GenServer.cast(__MODULE__, {:update, block})
   end
 
   @spec exists?(BlockHeader.block_hash) :: true | false
@@ -123,6 +124,11 @@ defmodule WC.Blockchain.LogServer do
   @spec make_block_locator(Block.t) :: list(BlockHeader.block_hash)
   def make_block_locator(tip) do
     GenServer.call(__MODULE__, {:make_block_locator, tip})
+  end
+
+  @spec get_utxo(TX.tx_hash, UTXOSet.offset) :: {:ok, Output.t} | {:error, :notfound}
+  def get_utxo(tx_hash, offset) do
+    GenServer.call(__MODULE__, {:get_utxo, {tx_hash, offset}})
   end
 
   #
@@ -196,7 +202,11 @@ defmodule WC.Blockchain.LogServer do
     {:reply, get_tx(log, tx_hash), state}
   end
 
-  def handle_call({:update, block}, _from, state = %{tip: tip, log: log}) do
+  def handle_call({:get_utxo, {tx_hash, offset}}, _from, state) do
+    {:reply, UTXOSet.get_utxo(tx_hash, offset), state}
+  end
+
+  def handle_cast({:update, block}, state = %{tip: tip, log: log}) do
     encoded_block = Block.encode(block)
     block_hash = Block.hash(block)
     offset = BlockchainLog.append_block(log, encoded_block)
@@ -210,18 +220,18 @@ defmodule WC.Blockchain.LogServer do
     if block == new_tip do
       # TODO: eventually use pub/sub for reorgs
       # Logger.info "New tip: #{Base.encode16(Block.hash(new_tip))}"
-      :ok = P2PConnectionRegistry.broadcast("new_tip", tip)      
+      :ok = P2PConnectionRegistry.broadcast("packet", %P2PPacket{proc: :getblocks, extra_data: make_block_locator(log, new_tip)})
       :ok = MinerServer.new_block(block)
     end
 
     :ok = P2PConnectionRegistry.broadcast("packet", %P2PPacket{proc: :inv, extra_data: [InvItem.from_block_hash(Block.hash(block))]})
     
-    {:reply, :ok, %{state | tip: new_tip}}
+    {:noreply, %{state | tip: new_tip}}
   end
 
-  def handle_info({:index_complete, tip}, state) do
-    Logger.info "Indexing complete: [tip: #{BlockHeader.pprint(tip.header)}]"
-    :ok = P2PConnectionRegistry.broadcast("new_tip", tip)
+  def handle_info({:index_complete, tip}, state = %{log: log}) do
+    Logger.info "Indexing complete: [tip: #{BlockHeader.pprint(tip.header)}], beginning synchronization"
+    :ok = P2PConnectionRegistry.broadcast("packet", %P2PPacket{proc: :getblocks, extra_data: make_block_locator(log, tip)})
     :ok = MinerServer.new_block(tip)
     {:noreply, %{state | tip: tip, index_complete: true}}
   end

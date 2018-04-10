@@ -49,7 +49,7 @@ defmodule WC.P2P.Connection do
 
   def init([socket]) do
     :ok = :inet.setopts(socket, [{:active, :once}]) # Re-set {:active, :once}    
-    P2PConnectionRegistry.register("new_tip")
+    # P2PConnectionRegistry.register("new_tip")
     P2PConnectionRegistry.register("packet")
     {:ok, pid} = P2PPingFSMSupervisor.start_child(self())
     :true = Process.link(pid)
@@ -78,10 +78,10 @@ defmodule WC.P2P.Connection do
     {:noreply, state}
   end
 
-  def handle_info({:connection_registry, "new_tip", tip}, state = %{socket: socket}) do
-    :ok = send_packet(socket, %P2PPacket{proc: :getblocks, extra_data: LogServer.make_block_locator(tip)})
-    {:noreply, state}
-  end
+  # def handle_info({:connection_registry, "new_tip", tip}, state = %{socket: socket}) do
+  #   :ok = send_packet(socket, %P2PPacket{proc: :getblocks, extra_data: LogServer.make_block_locator(tip)})
+  #   {:noreply, state}
+  # end
 
   def handle_info({:connection_registry, "packet", packet}, state = %{socket: socket}) do
     :ok = send_packet(socket, packet)
@@ -233,6 +233,7 @@ defmodule WC.P2P.Connection do
   def handle_end_of_batch(block_hash, state = %{last_block_hash_in_batch: block_hash, socket: socket}) do
     # :ok = send_packet(socket, %P2PPacket{proc: :getblocks, extra_data: [block_hash]})
     :ok = send_packet(socket, %P2PPacket{proc: :getblocks, extra_data: LogServer.make_block_locator()})
+    Logger.info "Synchronizing..."
     %{state | last_block_hash_in_batch: nil}
   end
 
