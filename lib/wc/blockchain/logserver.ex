@@ -12,6 +12,7 @@ alias WC.Blockchain.TX, as: TX
 alias WC.Blockchain.Input, as: Input
 alias WC.Blockchain.TxHashIndex, as: TxHashIndex
 alias WC.Blockchain.UTXOSet, as: UTXOSet
+alias WC.Blockchain.Balances, as: Balances
 alias WC.Miner.MinerServer, as: MinerServer
 alias WC.P2P.Packet, as: P2PPacket
 alias WC.P2P.ConnectionRegistry, as: P2PConnectionRegistry
@@ -43,6 +44,7 @@ defmodule WC.Blockchain.LogServer do
     :ok = TxHashIndex.init
     :ok = ChainState.init
     :ok = UTXOSet.init
+    :ok = Balances.init
     # Kick off indexer process
     spawn_link index_blocks(self())
     {:ok, %{@initial_state | log: log}}
@@ -82,7 +84,7 @@ defmodule WC.Blockchain.LogServer do
 
   @spec update(Block.t) :: :ok
   def update(block) do
-    GenServer.cast(__MODULE__, {:update, block})
+    GenServer.call(__MODULE__, {:update, block})
   end
 
   @spec exists?(BlockHeader.block_hash) :: true | false
@@ -197,7 +199,7 @@ defmodule WC.Blockchain.LogServer do
     {:reply, get_tx(log, tx_hash), state}
   end
 
-  def handle_cast({:update, block}, state = %{tip: tip, log: log}) do
+  def handle_call({:update, block}, _from, state = %{tip: tip, log: log}) do
     encoded_block = Block.encode(block)
     block_hash = Block.hash(block)
     offset = BlockchainLog.append_block(log, encoded_block)
@@ -217,7 +219,7 @@ defmodule WC.Blockchain.LogServer do
 
     :ok = P2PConnectionRegistry.broadcast("packet", %P2PPacket{proc: :inv, extra_data: [InvItem.from_block_hash(Block.hash(block))]})
     
-    {:noreply, %{state | tip: new_tip}}
+    {:reply, :ok, %{state | tip: new_tip}}
   end
 
   def handle_info({:index_complete, tip}, state) do
@@ -231,7 +233,7 @@ defmodule WC.Blockchain.LogServer do
   # PRIVATE
   #
 
-  @spec get_tx(BlockchainLog.t, BlockHeader.block_hash) :: {:ok, TX.t} | {:error, :notfound}
+  @spec get_tx(BlockchainLog.t, TX.tx_hash) :: {:ok, TX.t} | {:error, :notfound}
   def get_tx(log, tx_hash) do
     case get_block_with_index(log, TxHashIndex, tx_hash) do
       {:error, error} ->
@@ -240,6 +242,12 @@ defmodule WC.Blockchain.LogServer do
 	[tx] = Enum.filter(block.txs, fn tx -> TX.hash(tx) == tx_hash end)
 	{:ok, tx}
     end
+  end
+
+  @spec get_tx!(BlockchainLog.t, TX.tx_hash) :: TX.t
+  def get_tx!(log, tx_hash) do
+    {:ok, tx} = get_tx(log, tx_hash)
+    tx
   end
   
   @spec make_block_locator(BlockchainLog.t, Block.t) :: list(BlockHeader.block_hash)
@@ -450,13 +458,11 @@ defmodule WC.Blockchain.LogServer do
 	  # 2.2. Fetch tx's referenced in inputs to removed tx's	  
 	  tx_map = Enum.flat_map(removed_blocks, fn %Block{txs: txs} -> txs end)
 	  |> Enum.flat_map(fn tx -> tx.inputs end)
-	  |> Enum.map(fn %Input{tx_hash: tx_hash} -> tx_hash end)
-	  |> Enum.map(fn tx_hash ->
-	    {:ok, tx} = get_tx(log, tx_hash)
-	    tx
-	  end)
+	  |> Enum.map(fn input -> input.tx_hash end)
+	  |> Enum.map(fn tx_hash -> get_tx!(log, tx_hash) end)
 	  |> Enum.group_by(&TX.hash/1)
 	  :ok = UTXOSet.update(removed_blocks, added_blocks, tx_map)
+	  :ok = Balances.update(removed_blocks, added_blocks, tx_map)
 	  {:ok, new_tip}
 	error ->
 	  error

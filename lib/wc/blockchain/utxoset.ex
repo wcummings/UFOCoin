@@ -41,9 +41,7 @@ defmodule WC.Blockchain.UTXOSet do
     rollback_blocks(rest, tx_map)
   end
 
-  def rollback_blocks([], _) do
-    :ok
-  end
+  def rollback_blocks([], _), do: :ok
 
   def insert_blocks([block|rest]) do
     Enum.each(utxo_keys(block), fn key -> :true = :ets.delete(:utxo_set, key) end)
@@ -51,9 +49,7 @@ defmodule WC.Blockchain.UTXOSet do
     insert_blocks(rest)
   end
 
-  def insert_blocks([]) do
-    :ok
-  end
+  def insert_blocks([]), do: :ok
 
   @spec get_utxo_values_for_inputs(TX.t, map()) :: list({{TX.tx_hash, non_neg_integer}, Output.t})
   def get_utxo_values_for_inputs(%TX{inputs: inputs}, tx_map) do

@@ -42,8 +42,8 @@ defmodule WC.Wallet.KeyStore do
     :crypto.hash(:sha256, base64_pubkey)
   end
 
-  def address(pubkey) do
-    fingerprint(pubkey) |> Base58Check.encode58check(128)
+  def encode_fingerprint(fingerprint) do
+    Base58Check.encode58check(128, fingerprint)
   end
-  
+
 end
