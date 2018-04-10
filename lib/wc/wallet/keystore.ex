@@ -3,14 +3,16 @@ defmodule WC.Wallet.KeyStore do
   @public_exponent 5
   @modulus_size 256
 
-  @type keypair :: {binary, binary}
-
-  # FIXME: should have auto inc ID
-  
+  @type fingerprint :: binary()
+  @type pubkey :: binary()
+  @type privkey :: binary()
+  @type keypair :: {pubkey, privkey}
+    
   def init do
     :mnesia.create_table(KeyStoreTable, [attributes: [:fingerprint, :keypair], type: :set])#, disc_copies: [Node.self()]])
   end
 
+  @spec generate_key :: fingerprint
   def generate_key do
     {pubkey, privkey} = :crypto.generate_key(:rsa, {@modulus_size * 8, @public_exponent})
     fingerprint = fingerprint(pubkey)
@@ -18,6 +20,7 @@ defmodule WC.Wallet.KeyStore do
     fingerprint
   end
 
+  @spec get_keypair(fingerprint) :: {:ok, keypair} | {:error, :notfound}
   def get_keypair(fingerprint) do
     {:atomic, result} = :mnesia.transaction(fn -> :mnesia.read(KeyStoreTable, fingerprint) end)
     case result do
@@ -28,6 +31,7 @@ defmodule WC.Wallet.KeyStore do
     end
   end
 
+  @spec get_all_keypairs :: list({fingerprint, keypair})
   def get_all_keypairs do
     {:atomic, result} = :mnesia.transaction(fn ->
       :mnesia.foldl(fn ({KeyStoreTable, fingerprint, keypair}, acc) ->
@@ -37,18 +41,10 @@ defmodule WC.Wallet.KeyStore do
     result
   end
   
+  @spec fingerprint(pubkey) :: fingerprint
   def fingerprint(pubkey) do
     base64_pubkey = :erlang.iolist_to_binary(pubkey) |> Base.encode64()
     :crypto.hash(:sha256, base64_pubkey)
-  end
-
-  def encode_fingerprint(fingerprint) do
-    Base58Check.encode58check(128, fingerprint)
-  end
-
-  def decode_address(address) do
-    {_, fingerprint} = Base58Check.decode58check(address)
-    fingerprint
   end
 
 end

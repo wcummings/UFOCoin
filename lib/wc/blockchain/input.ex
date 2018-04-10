@@ -40,4 +40,9 @@ defmodule WC.Blockchain.Input do
       pubkey)
   end
 
+  @spec from_utxo_record(UTXOSet.utxo_record, KeyStore.pubkey) :: t
+  def from_utxo_record({{tx_hash, offset}, _output}, pubkey) do
+    %__MODULE__{tx_hash: tx_hash, offset: offset, pubkey: pubkey}
+  end
+
 end

@@ -60,25 +60,8 @@ defmodule WC do
   def setup_keystore do
     if length(KeyStore.get_all_keypairs()) == 0 do
       fingerprint = KeyStore.generate_key
-      # address = Base58Check.encode58check(128, fingerprint)
-      address = KeyStore.encode_fingerprint(fingerprint)
+      address = Base58Check.encode58check(128, fingerprint)
       Logger.info "KeyStore empty, generated key: #{address}"
-      Application.put_env(:wc, :coinbase_address, address)
-    end
-
-    coinbase_address = Application.get_env(:wc, :coinbase_address)
-    
-    if coinbase_address == nil do
-      Logger.error("coinbase_address must be set")
-      exit(:error)
-    else
-      try do
-	Base58Check.decode58check(coinbase_address)
-      rescue
-	ArgumentError ->
-	  Logger.error("coinbase_address is invalid: #{coinbase_address}")
-	  exit(:error)
-      end
     end
   end
   

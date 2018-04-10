@@ -9,7 +9,6 @@ alias WC.Blockchain.ChainState, as: ChainState
 alias WC.Blockchain.OrphanBlockTable, as: OrphanBlockTable
 alias WC.Blockchain.InvItem, as: InvItem
 alias WC.Blockchain.TX, as: TX
-alias WC.Blockchain.Input, as: Input
 alias WC.Blockchain.TxHashIndex, as: TxHashIndex
 alias WC.Blockchain.UTXOSet, as: UTXOSet
 alias WC.Miner.MinerServer, as: MinerServer

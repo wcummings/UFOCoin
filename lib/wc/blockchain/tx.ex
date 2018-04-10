@@ -93,7 +93,9 @@ defmodule WC.Blockchain.TX do
 		   offset: 0,
 		   pubkey: <<0 :: size(256)>>,
 		   signature: :crypto.strong_rand_bytes(256)}
-    {_, fingerprint} = Base58Check.decode58check(Application.get_env(:wc, :coinbase_address))
+    # Generate a new key for each block
+    fingerprint = KeyStore.generate_key
+    # {_, fingerprint} = Base58Check.decode58check(Application.get_env(:wc, :coinbase_address))
     %__MODULE__{inputs: [input], outputs: [%Output{fingerprint: fingerprint, value: @reward}]}
   end
 

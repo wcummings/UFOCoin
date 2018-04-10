@@ -24,6 +24,7 @@ defmodule WC.Mixfile do
      {:nat, github: 'wcummings/erlang-nat'},
      {:cachex, "~> 2.1"},
      {:ranch, "~> 1.4.0"},
-     {:base58check, github: "wcummings/base58check"}]
+     {:base58check, github: "wcummings/base58check"},
+     {:scribe, "~> 0.8"}]
   end
 end

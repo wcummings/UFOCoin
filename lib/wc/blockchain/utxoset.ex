@@ -8,7 +8,8 @@ alias WC.Blockchain.Output, as: Output
 
 defmodule WC.Blockchain.UTXOSet do
 
-  @compile {:parse_transform, :ms_transform}
+  @type offset :: non_neg_integer
+  @type utxo_record :: {{TX.hash, offset}, Output.t}
   
   @spec init :: :ok
   def init do
@@ -22,8 +23,8 @@ defmodule WC.Blockchain.UTXOSet do
     :ok = insert_blocks(added_blocks)
   end
 
-  @spec get_output(TX.tx_hash, non_neg_integer) :: {:ok, Output.t} | {:error, :notfound}
-  def get_output(tx_hash, offset) do
+  @spec get_utxo(TX.tx_hash, non_neg_integer) :: {:ok, Output.t} | {:error, :notfound}
+  def get_utxo(tx_hash, offset) do
     case :ets.lookup(:utxo_set, {tx_hash, offset}) do
       [] ->
 	{:error, :notfound}
@@ -32,13 +33,16 @@ defmodule WC.Blockchain.UTXOSet do
     end
   end
 
-  @spec get_outputs_for_fingerprint(binary()) :: list(Output.t)
-  def get_outputs_for_fingerprint(fingerprint) do
-    # FIXME
+  # FIXME: this should be made to be more efficient
+  @spec get_utxo_for_fingerprint(binary()) :: list({utxo_record, Output.t})
+  def get_utxo_for_fingerprint(fingerprint) do
     # :ets.select(:utxo_set, :ets.fun2ms(fn {_, output = %Output{fingerprint: ^fingerprint}} -> output end))
-    # :ets.match(:utxo_set, {:_, %Output{fingerprint: fingerprint}})
     :ets.tab2list(:utxo_set)
-    |> Enum.map(fn {_, output} -> output end)
+    |> Enum.filter(fn
+      {_, %Output{fingerprint: ^fingerprint}} -> true
+      _ -> false
+    end)
+    |> Enum.sort(fn ({_, %Output{value: v1}}, {_, %Output{value: v2}}) -> v1 >= v2 end)
   end
   
   #
@@ -64,7 +68,7 @@ defmodule WC.Blockchain.UTXOSet do
 
   def insert_blocks([]), do: :ok
 
-  @spec get_utxo_values_for_inputs(TX.t, map()) :: list({{TX.tx_hash, non_neg_integer}, Output.t})
+  @spec get_utxo_values_for_inputs(TX.t, map()) :: list({utxo_record, Output.t})
   def get_utxo_values_for_inputs(%TX{inputs: inputs}, tx_map) do
     for input <- inputs do
       tx = tx_map[input.tx_hash]
@@ -79,7 +83,7 @@ defmodule WC.Blockchain.UTXOSet do
   end
   
   @doc "Returns records for creating outputs."
-  @spec utxo_values(Block.t) :: list({{TX.tx_hash, non_neg_integer}, Output.t})
+  @spec utxo_values(Block.t) :: list({utxo_record, Output.t})
   def utxo_values(%Block{txs: txs}) do
     Enum.flat_map(txs, &utxo_value/1)
   end

@@ -157,7 +157,7 @@ defmodule WC.Blockchain.BlockValidatorServer do
   def get_outputs(inputs), do: get_outputs(inputs, [])
   
   def get_outputs([%Input{tx_hash: tx_hash, offset: offset}|rest], acc) do
-    case UTXOSet.get_output(tx_hash, offset) do
+    case UTXOSet.get_utxo(tx_hash, offset) do
       {:error, :notfound} ->
 	{:error, {:missing_output, {tx_hash, offset}}}
       {:ok, output} ->
