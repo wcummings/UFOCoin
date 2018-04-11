@@ -198,11 +198,16 @@ defmodule WC.Blockchain.LogServer do
   end
 
   def handle_call({:update, block}, _from, state = %{tip: tip, log: log}) do
-    case validate_preappend(log, block) do
-      :ok ->
-	{:reply, :ok, %{state | tip: update(log, block, tip)}}
-      error ->
-	{:reply, error, state}
+    case get_block_with_index(log, BlockHashIndex, Block.hash(block)) do
+      {:error, :notfound} ->    
+	case validate_preappend(log, block) do
+	  :ok ->
+	    {:reply, :ok, %{state | tip: update(log, block, tip)}}
+	  error ->
+	    {:reply, error, state}
+	end
+      {:ok, _} ->
+	{:reply, :ok, state}
     end
   end
 
@@ -218,17 +223,12 @@ defmodule WC.Blockchain.LogServer do
   #
 
   def prepare_validate_deps(log, block) do
-    case get_block_with_index(log, BlockHashIndex, Block.hash(block)) do
-      {:ok, _} ->
-	case get_block_with_index(log, BlockHashIndex, block.header.prev_block_hash) do
-	  {:ok, prev_block} ->
-	    difficulty = Block.get_difficulty(find_prev_blocks(log, Block.difficulty_number_of_blocks(), block))
-	    {:ok, prev_block, difficulty}
-	  error ->
-	    error
-	end
-      error ->
-	error
+    case get_block_with_index(log, BlockHashIndex, block.header.prev_block_hash) do
+      {:ok, prev_block} ->
+	difficulty = Block.get_difficulty(find_prev_blocks(log, Block.difficulty_number_of_blocks(), block))
+	{:ok, prev_block, difficulty}
+      {:error, :notfound} ->
+	{:error, :orphan}
     end
   end
   
@@ -503,9 +503,9 @@ defmodule WC.Blockchain.LogServer do
     # First rollback blocks back to the shared parent
     db = UTXODb.new(:inmem)
     utxo_ops = Enum.flat_map(removed_blocks, fn block -> UTXODb.undo_block_changeset(db, block) end)
-    db = Enum.reduce(utxo_ops, fn (op, db) -> UTXODb.apply_op(db, op) end)
+    db = Enum.reduce(utxo_ops, db, fn (op, db) -> UTXODb.apply_op(db, op) end)
     # Validate and add each new block
-    case verify_block_and_update_utxodb(log, db, added_blocks) do
+    case verify_blocks_and_update_utxodb(log, db, added_blocks) do
       {:ok, new_db} ->
 	# Commit our in memory changes to mnesia now that we know all the blocks are valid
 	UTXODb.commit(new_db)
@@ -522,13 +522,13 @@ defmodule WC.Blockchain.LogServer do
     case Block.validate(db, prev_block, difficulty, block) do
       :ok ->
 	utxo_ops = UTXODb.block_changeset(block)
-	db = Enum.reduce(utxo_ops, fn (op, db) -> UTXODb.apply_op(db, op) end)
-	verify_block_and_update_utxodb(log, db, rest)
+	db = Enum.reduce(utxo_ops, db, fn (op, db) -> UTXODb.apply_op(db, op) end)
+	verify_blocks_and_update_utxodb(log, db, rest)
       error ->
 	error
     end
   end
 
-  def verify_block_and_update_utxodb(_, db, []), do: {:ok, db}
+  def verify_blocks_and_update_utxodb(_, db, []), do: {:ok, db}
   
 end

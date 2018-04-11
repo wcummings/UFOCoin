@@ -82,10 +82,6 @@ defmodule WC.Blockchain.UTXODb do
     :ok
   end
 
-  def commit(:raw) do
-    :ok
-  end
-
   @spec block_changeset(Block.t) :: list(utxo_op)
   def block_changeset(%Block{txs: txs}) do
     Enum.flat_map(txs, &changeset/1)
@@ -98,6 +94,7 @@ defmodule WC.Blockchain.UTXODb do
   
   @spec changeset(TX.t) :: list(utxo_op)
   def changeset(tx = %TX{inputs: inputs, outputs: outputs}) do
+    # TODO: ignore coinbase TX's    
     deleted = Enum.map(inputs, fn input -> {:delete, {input.tx_hash, input.offset}} end)
     added = Enum.with_index(outputs)
     |> Enum.map(fn {output, i} -> {:add, {{TX.hash(tx), i}, output}} end)
