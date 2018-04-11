@@ -82,7 +82,7 @@ defmodule WC.Blockchain.LogServer do
 
   @spec update(Block.t) :: :ok
   def update(block) do
-    GenServer.call(__MODULE__, {:update, block})
+    GenServer.cast(__MODULE__, {:update, block})
   end
 
   @spec exists?(BlockHeader.block_hash) :: true | false
@@ -197,22 +197,35 @@ defmodule WC.Blockchain.LogServer do
     {:reply, get_tx(log, tx_hash), state}
   end
 
-  def handle_call({:update, block}, _from, state = %{tip: tip, log: log}) do
+  def handle_cast({:update, block}, state = %{tip: tip, log: log}) do
     case get_block_with_index(log, BlockHashIndex, Block.hash(block)) do
       {:error, :notfound} ->    
 	case validate_preappend(log, block) do
 	  :ok ->
-	    {:reply, :ok, %{state | tip: update(log, block, tip)}}
+	    new_tip = update(log, block, tip)	    
+	    case OrphanBlockTable.get_by_prev_block_hash(Block.hash(block)) do
+	      {:ok, blocks} ->
+		Enum.each(blocks, &update/1)
+		{:noreply, %{state | tip: new_tip}}
+	      {:error, :notfound} ->
+		{:noreply, %{state | tip: new_tip}}
+	    end
+	  {:error, :orphan} ->
+	    :ok = OrphanBlockTable.insert(block)
+	    # Try to find the orphan's parents! ;_;
+	    :ok = P2PConnectionRegistry.broadcast("packet", %P2PPacket{proc: :getblocks, extra_data: make_block_locator(log, tip)})	    
+	    {:noreply, state}
 	  error ->
-	    {:reply, error, state}
+	    {:noreply, state}	    
 	end
       {:ok, _} ->
-	{:reply, :ok, state}
+	{:noreply, state}	
+
     end
   end
 
   def handle_info({:index_complete, tip}, state = %{log: log}) do
-    Logger.info "Indexing complete: [tip: #{BlockHeader.pprint(tip.header)}], beginning synchronization"
+    Logger.info "Indexing complete: [tip: #{BlockHeader.pprint(tip.header)}]"
     :ok = P2PConnectionRegistry.broadcast("packet", %P2PPacket{proc: :getblocks, extra_data: make_block_locator(log, tip)})
     :ok = MinerServer.new_block(tip)
     {:noreply, %{state | tip: tip, index_complete: true}}
@@ -460,6 +473,7 @@ defmodule WC.Blockchain.LogServer do
   end
 
   def update_chain_state(log, old_tip, new_tip) do
+    # Logger.info "update_chain_state: old_tip=#{inspect(old_tip)}, new_tip=#{inspect(new_tip)}"
     {:ok, {_, cum_difficulty, _}} = ChainState.get_height_and_cum_difficulty(new_tip.header.prev_block_hash)
     new_cum_difficulty = cum_difficulty + new_tip.header.difficulty
     {:ok, {_, old_cum_difficulty, _}} = ChainState.get_height_and_cum_difficulty(Block.hash(old_tip))
@@ -468,6 +482,7 @@ defmodule WC.Blockchain.LogServer do
     if is_longest do
       case find_first_parent_in_longest_chain(log, new_tip) do
 	{:ok, parent} ->
+	  # Logger.info "update_chain_state: parent=#{inspect(parent)}"
 	  # 1. Update longest chain
 	  {:ok, [_|added_block_hashes]} = find_block_range(log, new_tip, parent)
 	  {:ok, [_|removed_block_hashes]} = find_block_range(log, old_tip, parent)
@@ -485,6 +500,7 @@ defmodule WC.Blockchain.LogServer do
 	  
 	  case update_utxodb(log, removed_blocks, added_blocks) do
 	    :ok ->
+	      Enum.each(added_blocks, fn block -> Logger.info "Block accepted: #{BlockHeader.pprint(block.header)}" end)
 	      for hash <- removed_block_hashes, do: :ok = ChainState.update_longest(hash, false)
 	      for hash <- added_block_hashes, do: :ok = ChainState.update_longest(hash, true)
 	      {:ok, new_tip}
@@ -512,7 +528,7 @@ defmodule WC.Blockchain.LogServer do
 	:ok
       error ->
 	# Log the error and do nothing
-	Logger.warn "Block rejected: #{inspect(error)}"
+	Logger.warn "Block rejected during reorg, aborting: #{inspect(error)}"
 	error
     end
   end

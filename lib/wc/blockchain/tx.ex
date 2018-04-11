@@ -5,7 +5,7 @@ alias WC.Wallet.KeyStore, as: KeyStore
 require Logger
 
 defmodule WC.Blockchain.TX do
-  defstruct version: 1, inputs: [], outputs: []
+  defstruct version: 1, inputs: [], outputs: [], is_coinbase: false
 
   @reward 5000
   
@@ -32,9 +32,8 @@ defmodule WC.Blockchain.TX do
     if fee < 0 do
       {:error, :negative_fee}
     else
-      invalid_inputs = Enum.with_index(inputs)
-      |> Enum.map(fn {input, i} -> {referenced_outputs[i], input} end)
-      |> Enum.map(fn {input, output} -> {input, Input.validate(input, output, encode(tx))} end)
+      invalid_inputs = Enum.map(inputs, fn input -> {referenced_outputs[{input.tx_hash, input.offset}], input} end)
+      |> Enum.map(fn {spent_output, input} -> {input, Input.validate(input, spent_output, encode(tx))} end)
       |> Enum.filter(fn {_, is_valid} -> is_valid end)
       if length(invalid_inputs) > 0 do
 	{:error, {:bad_inputs, invalid_inputs}}
@@ -96,7 +95,7 @@ defmodule WC.Blockchain.TX do
     # Generate a new key for each block
     fingerprint = KeyStore.generate_key
     # {_, fingerprint} = Base58Check.decode58check(Application.get_env(:wc, :coinbase_address))
-    %__MODULE__{inputs: [input], outputs: [%Output{fingerprint: fingerprint, value: @reward}]}
+    %__MODULE__{inputs: [input], outputs: [%Output{fingerprint: fingerprint, value: @reward}], is_coinbase: true}
   end
 
   @spec is_coinbase?(t) :: true | false
@@ -119,7 +118,7 @@ defmodule WC.Blockchain.TX do
   @spec get_fee(list(Output.t), list(Output.t)) :: integer
   def get_fee(outputs, referenced_outputs) do
     output_value = Enum.map(outputs, fn output -> output.value end) |> Enum.sum
-    input_value = Enum.map(referenced_outputs, fn output -> output.value end) |> Enum.sum
+    input_value = Enum.map(referenced_outputs, fn {_, output} -> output.value end) |> Enum.sum
     input_value - output_value
   end
 

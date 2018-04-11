@@ -41,7 +41,11 @@ defmodule WC.Blockchain.Block do
   # Might be able to handle this w/ a macro
   @spec decode(encoded_block) :: t
   def decode(<<encoded_block_header :: binary-size(86), length :: size(32), txs :: binary-size(length)>>) do
-    %__MODULE__{header: BlockHeader.decode(encoded_block_header), txs: TX.decode(txs)}
+    decoded_txs = case TX.decode(txs) do
+      [coinbase|decoded_txs] -> [%{coinbase | is_coinbase: true}|decoded_txs]
+      [] -> []
+    end
+    %__MODULE__{header: BlockHeader.decode(encoded_block_header), txs: decoded_txs}
   end
 
   @spec hash(t) :: BlockHeader.block_hash
@@ -196,18 +200,18 @@ defmodule WC.Blockchain.Block do
   # PRIVATE
   #
   
-  def get_outputs(db, inputs), do: get_outputs(db, inputs, [])
+  def get_outputs(db, inputs), do: get_outputs(db, inputs, %{})
   
   def get_outputs(db, [%Input{tx_hash: tx_hash, offset: offset}|rest], acc) do
     case UTXODb.get(db, tx_hash, offset) do
       {:error, :notfound} ->
 	{:error, {:missing_output, {tx_hash, offset}}}
       {:ok, output} ->
-	get_outputs(db, rest, [output|acc])
+	get_outputs(db, rest, Map.put(acc, {tx_hash, offset}, output))
     end
   end
 
-  def get_outputs(_, [], acc), do: {:ok, Enum.reverse(acc)}
+  def get_outputs(_, [], acc), do: {:ok, acc}
 
   #
   # PRIVATE

@@ -13,5 +13,14 @@ defmodule WC.Blockchain.Output do
   def decode(<<fingerprint :: binary-size(32), value :: size(32)>>) do
     %__MODULE__{fingerprint: fingerprint, value: value}
   end
+
+  @spec to_tuple(t) :: {binary(), non_neg_integer()}
+  def to_tuple(%__MODULE__{fingerprint: fingerprint, value: value}) do
+    {fingerprint, value}
+  end
+
+  def from_tuple({fingerprint, value}) do
+    %__MODULE__{fingerprint: fingerprint, value: value}
+  end
   
 end

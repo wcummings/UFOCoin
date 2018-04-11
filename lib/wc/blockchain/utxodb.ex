@@ -13,7 +13,7 @@ defmodule WC.Blockchain.UTXODb do
   @opaque t :: :raw | {:inmem, %{}}
   @type db_type :: :raw | :inmem
   @type utxo_key :: {TX.tx_hash, Input.offset}
-  @type utxo_record :: {utxo_key, Output.t}
+  @type utxo_record :: {utxo_key, {binary(), non_neg_integer()}}
   @type utxo_op :: {:add, utxo_record} | {:delete, utxo_key}
   
   def init do
@@ -31,7 +31,7 @@ defmodule WC.Blockchain.UTXODb do
 
   @spec apply_op(t, utxo_op) :: t
   def apply_op(:raw, {:add, {utxo_key, output}}) do
-    {:atomic, :ok} = :mnesia.transaction(fn -> :mnesia.write({UTXODbTable, utxo_key, output}) end)
+    {:atomic, :ok} = :mnesia.transaction(fn -> :mnesia.write({UTXODbTable, utxo_key, Output.to_tuple(output)}) end)
     :raw
   end
 
@@ -53,9 +53,9 @@ defmodule WC.Blockchain.UTXODb do
   @spec get(t, TX.tx_hash, non_neg_integer) :: {:ok, Output.t} | {:error, :not_found}
   def get(:raw, tx_hash, offset) do
     case :mnesia.transaction(fn -> :mnesia.read(UTXODbTable, {tx_hash, offset}) end) do
-      [{UTXODbTable, {^tx_hash, ^offset}, output}] ->
-	output
-      [] ->
+      {:atomic, [{UTXODbTable, {^tx_hash, ^offset}, output}]} ->
+	{:ok, Output.from_tuple(output)}
+      {:atomic, []} ->
 	{:error, :not_found}
     end
   end
@@ -67,7 +67,7 @@ defmodule WC.Blockchain.UTXODb do
       :undefined ->
 	{:error, :not_found}
       output ->
-	output
+	{:ok, output}
     end
   end
 
@@ -102,6 +102,11 @@ defmodule WC.Blockchain.UTXODb do
   end
 
   @spec undo_changeset(t, TX.t) :: list(utxo_op)
+  def undo_changeset(_db, tx = %TX{inputs: inputs, outputs: outputs, is_coinbase: true}) do
+    Enum.with_index(outputs)
+    |> Enum.map(fn {_, i} -> {:delete, {TX.hash(tx), i}} end)
+  end
+  
   def undo_changeset(db, tx = %TX{inputs: inputs, outputs: outputs}) do
     deleted = Enum.with_index(outputs)
     |> Enum.map(fn {_, i} -> {:delete, {TX.hash(tx), i}} end)
@@ -110,6 +115,12 @@ defmodule WC.Blockchain.UTXODb do
       {:add, {{input.tx_hash, input.offset}, output}}
     end)
     deleted ++ added
+  end
+
+  @spec scan(KeyStore.fingerprint) :: list(utxo_record)
+  def scan(fingerprint) do
+    {:atomic, result} = :mnesia.transaction(fn -> :mnesia.match_object({UTXODbTable, :_, {fingerprint, :_}}) end)
+    result
   end
 
 end
