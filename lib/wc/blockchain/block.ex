@@ -2,13 +2,15 @@ require Logger
 
 alias WC.Blockchain.BlockHeader, as: BlockHeader
 alias WC.Blockchain.TX, as: TX
+alias WC.Blockchain.Input, as: Input
 alias WC.Blockchain.LogServer, as: LogServer
+alias WC.Blockchain.UTXODb, as: UTXODb
 
 defmodule WC.Blockchain.Block do
   @enforce_keys [:header, :txs]
   defstruct [:header, :txs]
 
-  @type block_validation_error :: :notfound | :orphan | :badheight | :alreadyaccepted | :baddifficulty | :badmerklehash
+  @type block_validation_error :: :notfound | :orphan | :bad_height | :already_accepted | :bad_difficulty | :bad_merkle_hash
   @type encoded_block :: iodata
   @type t :: %__MODULE__{header: BlockHeader.t, txs: list(TX.t)}
 
@@ -90,14 +92,127 @@ defmodule WC.Blockchain.Block do
     end
   end
 
-  def get_difficulty(block) do
-    get_difficulty(LogServer.find_prev_blocks(144, block))
+  @spec validate_without_utxodb(Block.t, non_neg_integer(), Block.t) :: {:ok , block_validation_error}
+  def validate_without_utxodb(prev_block, difficulty, block) do
+    validators = [
+      &validate_nonce/1,
+      &validate_fake_merkle_hash/1,
+      &validate_coinbase/1,
+      fn block -> validate_prev_block(prev_block, block) end,
+      fn block -> validate_difficulty(difficulty, block) end,
+    ]
+    case Enum.find(validators, fn validator -> validator.(block) != :ok end) do
+      nil ->
+	:ok
+      error ->
+	error
+    end    
+  end
+  
+  @spec validate(UTXODb.t, Block.t, non_neg_integer, Block.t) :: {:ok, Block.t} | {:error, block_validation_error}
+  def validate(db, prev_block, difficulty, block) do
+    validators = [
+      fn block -> validate_without_utxodb(prev_block, difficulty, block) end,
+      fn block -> validate_txs(db, block) end
+    ]
+    case Enum.find(validators, fn validator -> validator.(block) != :ok end) do
+      nil ->
+	:ok
+      error ->
+	error
+    end
+  end
+
+  @spec difficulty_number_of_blocks :: non_neg_integer
+  def difficulty_number_of_blocks do
+    144
+  end
+  
+  #
+  # VALIDATORS
+  #
+  
+  def validate_nonce(block) do
+    case BlockHeader.check_nonce(block.header) do
+      {true, _} ->
+	:ok
+      {false, _} ->
+	{:error, :bad_nonce}
+    end
+  end
+
+  def validate_fake_merkle_hash(%__MODULE__{header: %BlockHeader{fake_merkle_hash: fake_merkle_hash}, txs: txs}) do
+    if :crypto.hash(:sha256, Enum.map(txs, &TX.encode/1)) == fake_merkle_hash do
+      :ok
+    else
+      {:error, :bad_merkle_hash}
+    end
+  end
+
+  def validate_prev_block(prev_block, block) do
+    if (block.header.height - 1) == prev_block.header.height do
+      :ok
+    else
+      {:error, :bad_height}
+    end
+  end
+
+  def validate_difficulty(difficulty, block) do
+    if block.header.difficulty >= difficulty do
+      :ok
+    else
+      {:error, :bad_difficulty}
+    end
+  end
+
+  def validate_txs(db, %__MODULE__{txs: [_|txs]}) do
+    case Enum.find(txs, fn tx -> validate_tx(db, tx) != :ok end) do
+      nil ->
+	:ok
+      error ->
+	error
+    end
+  end
+ 
+  @spec validate_tx(UTXODb.t, TX.t) :: :ok | {:error, term()}
+  def validate_tx(db, tx) do
+    case get_outputs(db, tx) do
+      {:ok, outputs} ->
+	TX.verify(tx, outputs)
+      error ->
+	error
+    end
+  end
+
+  def validate_coinbase(%__MODULE__{txs: [coinbase|_]}) do
+    if TX.is_coinbase?(coinbase) do
+      :ok
+    else
+      {:error, :invalid_coinbase}
+    end
   end
 
   #
   # PRIVATE
   #
+  
+  def get_outputs(db, inputs), do: get_outputs(db, inputs, [])
+  
+  def get_outputs(db, [%Input{tx_hash: tx_hash, offset: offset}|rest], acc) do
+    case UTXODb.get(db, tx_hash, offset) do
+      {:error, :notfound} ->
+	{:error, {:missing_output, {tx_hash, offset}}}
+      {:ok, output} ->
+	get_outputs(db, rest, [output|acc])
+    end
+  end
 
+  def get_outputs(_, [], acc), do: {:ok, Enum.reverse(acc)}
+
+  #
+  # PRIVATE
+  #
+  
   def get_current_difficulty(block) do
     blocks = LogServer.find_prev_blocks(144, block) ++ [block]
     get_difficulty(blocks)

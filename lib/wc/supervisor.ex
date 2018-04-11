@@ -11,7 +11,6 @@ defmodule WC.Supervisor do
       {Registry, [keys: :duplicate, name: :connection_registry]},
       worker(WC.Blockchain.LogServer, []),
       supervisor(WC.P2P.Supervisor, []),
-      worker(WC.Blockchain.BlockValidatorServer, []),
       supervisor(WC.Miner.Supervisor, [])
     ]
 

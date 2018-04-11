@@ -11,7 +11,7 @@ alias WC.Blockchain.InvItem, as: InvItem
 alias WC.Blockchain.TX, as: TX
 alias WC.Blockchain.Input, as: Input
 alias WC.Blockchain.TxHashIndex, as: TxHashIndex
-alias WC.Blockchain.UTXOSet, as: UTXOSet
+alias WC.Blockchain.UTXODb, as: UTXODb
 alias WC.Miner.MinerServer, as: MinerServer
 alias WC.P2P.Packet, as: P2PPacket
 alias WC.P2P.ConnectionRegistry, as: P2PConnectionRegistry
@@ -42,7 +42,7 @@ defmodule WC.Blockchain.LogServer do
     :ok = PrevBlockHashIndex.init
     :ok = TxHashIndex.init
     :ok = ChainState.init
-    :ok = UTXOSet.init
+    # :ok = UTXOSet.init
     # Kick off indexer process
     spawn_link index_blocks(self())
     {:ok, %{@initial_state | log: log}}
@@ -82,7 +82,7 @@ defmodule WC.Blockchain.LogServer do
 
   @spec update(Block.t) :: :ok
   def update(block) do
-    GenServer.cast(__MODULE__, {:update, block})
+    GenServer.call(__MODULE__, {:update, block})
   end
 
   @spec exists?(BlockHeader.block_hash) :: true | false
@@ -124,11 +124,6 @@ defmodule WC.Blockchain.LogServer do
   @spec make_block_locator(Block.t) :: list(BlockHeader.block_hash)
   def make_block_locator(tip) do
     GenServer.call(__MODULE__, {:make_block_locator, tip})
-  end
-
-  @spec get_utxo(TX.tx_hash, UTXOSet.offset) :: {:ok, Output.t} | {:error, :notfound}
-  def get_utxo(tx_hash, offset) do
-    GenServer.call(__MODULE__, {:get_utxo, {tx_hash, offset}})
   end
 
   #
@@ -202,31 +197,13 @@ defmodule WC.Blockchain.LogServer do
     {:reply, get_tx(log, tx_hash), state}
   end
 
-  def handle_call({:get_utxo, {tx_hash, offset}}, _from, state) do
-    {:reply, UTXOSet.get_utxo(tx_hash, offset), state}
-  end
-
-  def handle_cast({:update, block}, state = %{tip: tip, log: log}) do
-    encoded_block = Block.encode(block)
-    block_hash = Block.hash(block)
-    offset = BlockchainLog.append_block(log, encoded_block)
-    :ok = BlockHashIndex.insert(block_hash, offset)
-    :ok = PrevBlockHashIndex.insert(block.header.prev_block_hash, offset)
-    :ok = OrphanBlockTable.delete(block_hash) # Remove orphan entry, if one existed
-    
-    Enum.each(block.txs, fn tx -> :ok = TxHashIndex.insert(TX.hash(tx), block_hash) end)
-
-    {:ok, new_tip} = update_chain_state(log, tip, block)
-    if block == new_tip do
-      # TODO: eventually use pub/sub for reorgs
-      # Logger.info "New tip: #{Base.encode16(Block.hash(new_tip))}"
-      :ok = P2PConnectionRegistry.broadcast("packet", %P2PPacket{proc: :getblocks, extra_data: make_block_locator(log, new_tip)})
-      :ok = MinerServer.new_block(block)
+  def handle_call({:update, block}, _from, state = %{tip: tip, log: log}) do
+    case validate_preappend(log, block) do
+      :ok ->
+	{:reply, :ok, %{state | tip: update(log, block, tip)}}
+      error ->
+	{:reply, error, state}
     end
-
-    :ok = P2PConnectionRegistry.broadcast("packet", %P2PPacket{proc: :inv, extra_data: [InvItem.from_block_hash(Block.hash(block))]})
-    
-    {:noreply, %{state | tip: new_tip}}
   end
 
   def handle_info({:index_complete, tip}, state = %{log: log}) do
@@ -240,6 +217,52 @@ defmodule WC.Blockchain.LogServer do
   # PRIVATE
   #
 
+  def prepare_validate_deps(log, block) do
+    case get_block_with_index(log, BlockHashIndex, Block.hash(block)) do
+      {:ok, _} ->
+	case get_block_with_index(log, BlockHashIndex, block.header.prev_block_hash) do
+	  {:ok, prev_block} ->
+	    difficulty = Block.get_difficulty(find_prev_blocks(log, Block.difficulty_number_of_blocks(), block))
+	    {:ok, prev_block, difficulty}
+	  error ->
+	    error
+	end
+      error ->
+	error
+    end
+  end
+  
+  def validate_preappend(log, block) do
+    case prepare_validate_deps(log, block) do
+      {:ok, prev_block, difficulty} ->
+	Block.validate_without_utxodb(prev_block, difficulty, block)
+      error ->
+	error
+    end
+  end
+  
+  @spec update(BlockchainLog.t, Block.t, Block.t) :: :ok
+  def update(log, block, tip) do
+    encoded_block = Block.encode(block)
+    block_hash = Block.hash(block)
+    offset = BlockchainLog.append_block(log, encoded_block)
+    :ok = BlockHashIndex.insert(block_hash, offset)
+    :ok = PrevBlockHashIndex.insert(block.header.prev_block_hash, offset)
+    :ok = OrphanBlockTable.delete(block_hash) # Remove orphan entry, if one existed
+    
+    Enum.each(block.txs, fn tx -> :ok = TxHashIndex.insert(TX.hash(tx), block_hash) end)
+
+    {:ok, new_tip} = update_chain_state(log, tip, block)
+    if block == new_tip do
+      # Logger.info "New tip: #{Base.encode16(Block.hash(new_tip))}"
+      :ok = P2PConnectionRegistry.broadcast("packet", %P2PPacket{proc: :getblocks, extra_data: make_block_locator(log, new_tip)})
+      :ok = MinerServer.new_block(block)
+    end
+
+    :ok = P2PConnectionRegistry.broadcast("packet", %P2PPacket{proc: :inv, extra_data: [InvItem.from_block_hash(Block.hash(block))]})
+    new_tip
+  end
+  
   @spec get_tx(BlockchainLog.t, TX.tx_hash) :: {:ok, TX.t} | {:error, :notfound}
   def get_tx(log, tx_hash) do
     case get_block_with_index(log, TxHashIndex, tx_hash) do
@@ -445,7 +468,7 @@ defmodule WC.Blockchain.LogServer do
     if is_longest do
       case find_first_parent_in_longest_chain(log, new_tip) do
 	{:ok, parent} ->
-	  #1. Update longest chain
+	  # 1. Update longest chain
 	  {:ok, [_|added_block_hashes]} = find_block_range(log, new_tip, parent)
 	  {:ok, [_|removed_block_hashes]} = find_block_range(log, old_tip, parent)
 	  if length(removed_block_hashes) > 0 do
@@ -456,20 +479,18 @@ defmodule WC.Blockchain.LogServer do
 	    Logger.info "Removed: #{inspect(Enum.map(removed_block_hashes, &Base.encode16/1))}"
 	    Logger.info "-------------------"
 	  end
-	  for hash <- removed_block_hashes, do: :ok = ChainState.update_longest(hash, false)
-	  for hash <- added_block_hashes, do: :ok = ChainState.update_longest(hash, true)
-	  # 2. Update UTXO set
-	  # 2.1. Fetch added and removed blocks for tx's
+
 	  removed_blocks = Enum.map(removed_block_hashes, fn block_hash -> get_block_with_index!(log, BlockHashIndex, block_hash) end)
 	  added_blocks = Enum.map(added_block_hashes, fn block_hash -> get_block_with_index!(log, BlockHashIndex, block_hash) end)
-	  # 2.2. Fetch tx's referenced in inputs to removed tx's	  
-	  tx_map = Enum.flat_map(removed_blocks, fn %Block{txs: txs} -> txs end)
-	  |> Enum.flat_map(fn tx -> tx.inputs end)
-	  |> Enum.map(fn input -> input.tx_hash end)
-	  |> Enum.map(fn tx_hash -> get_tx!(log, tx_hash) end)
-	  |> Enum.group_by(&TX.hash/1)
-	  :ok = UTXOSet.update(removed_blocks, added_blocks, tx_map)
-	  {:ok, new_tip}
+	  
+	  case update_utxodb(log, removed_blocks, added_blocks) do
+	    :ok ->
+	      for hash <- removed_block_hashes, do: :ok = ChainState.update_longest(hash, false)
+	      for hash <- added_block_hashes, do: :ok = ChainState.update_longest(hash, true)
+	      {:ok, new_tip}
+	    _ ->
+	      {:ok, old_tip}
+	  end
 	error ->
 	  error
       end
@@ -478,4 +499,36 @@ defmodule WC.Blockchain.LogServer do
     end
   end
 
+  def update_utxodb(log, removed_blocks, added_blocks) do
+    # First rollback blocks back to the shared parent
+    db = UTXODb.new(:inmem)
+    utxo_ops = Enum.flat_map(removed_blocks, fn block -> UTXODb.undo_block_changeset(db, block) end)
+    db = Enum.reduce(utxo_ops, fn (op, db) -> UTXODb.apply_op(db, op) end)
+    # Validate and add each new block
+    case verify_block_and_update_utxodb(log, db, added_blocks) do
+      {:ok, new_db} ->
+	# Commit our in memory changes to mnesia now that we know all the blocks are valid
+	UTXODb.commit(new_db)
+	:ok
+      error ->
+	# Log the error and do nothing
+	Logger.warn "Block rejected: #{inspect(error)}"
+	error
+    end
+  end
+
+  def verify_blocks_and_update_utxodb(log, db, [block|rest]) do
+    {:ok, prev_block, difficulty} = prepare_validate_deps(log, block)
+    case Block.validate(db, prev_block, difficulty, block) do
+      :ok ->
+	utxo_ops = UTXODb.block_changeset(block)
+	db = Enum.reduce(utxo_ops, fn (op, db) -> UTXODb.apply_op(db, op) end)
+	verify_block_and_update_utxodb(log, db, rest)
+      error ->
+	error
+    end
+  end
+
+  def verify_block_and_update_utxodb(_, db, []), do: {:ok, db}
+  
 end

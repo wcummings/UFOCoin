@@ -2,7 +2,9 @@ require Logger
 
 alias WC.Blockchain.OrphanBlockTable, as: OrphanBlockTable
 alias WC.P2P.AddrTable, as: P2PAddrTable
+alias WC.P2P.Addr, as: P2PAddr
 alias WC.Wallet.KeyStore, as: KeyStore
+alias WC.Blockchain.UTXODb, as: UTXODb
 alias WC.P2P.UPnP, as: UPnP
 
 defmodule WC do
@@ -21,7 +23,8 @@ defmodule WC do
     mnesia_tables = [
       P2PAddrTable,
       OrphanBlockTable,
-      KeyStore
+      KeyStore,
+      UTXODb
     ]
 
     Enum.each(mnesia_tables, fn table ->
@@ -43,7 +46,7 @@ defmodule WC do
     seed_nodes = lookup_seed_nodes()
     default_port = Application.get_env(:wc, :default_port)
 
-    for ip <- seed_nodes, do: WC.P2P.AddrTable.insert(%WC.P2P.Addr{ip: ip, port: default_port})
+    for ip <- seed_nodes, do: P2PAddrTable.insert(%P2PAddr{ip: ip, port: default_port})
 
     Application.put_env(:wc, :ip, get_ip())
     

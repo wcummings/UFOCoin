@@ -8,6 +8,7 @@ defmodule WC.Blockchain.Input do
 
   @type t :: %__MODULE__{}
   @type encoded_input :: binary
+  @type offset :: non_neg_integer
 
   @spec encode(t) :: encoded_input
   def encode(%__MODULE__{tx_hash: <<tx_hash :: binary-size(32)>>,
@@ -38,11 +39,6 @@ defmodule WC.Blockchain.Input do
       encoded_tx,
       signature,
       pubkey)
-  end
-
-  @spec from_utxo_record(UTXOSet.utxo_record, KeyStore.pubkey) :: t
-  def from_utxo_record({{tx_hash, offset}, _output}, pubkey) do
-    %__MODULE__{tx_hash: tx_hash, offset: offset, pubkey: pubkey}
   end
 
 end

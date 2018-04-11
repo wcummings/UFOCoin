@@ -14,6 +14,7 @@
    - [ ] Automatic checkpointing/"must be this high" limit
    - [ ] Key management
    - [ ] TX signing etc.
+   - [ ] NIF for merkle trees
    - [ ] Everything else
 
 ** Building

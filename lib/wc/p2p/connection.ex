@@ -1,6 +1,5 @@
 require Logger
 
-alias WC.Blockchain.BlockValidatorServer, as: BlockValidatorServer
 alias WC.Blockchain.InvItem, as: InvItem
 alias WC.Blockchain.LogServer, as: LogServer
 alias WC.Blockchain.Block, as: Block
@@ -160,7 +159,7 @@ defmodule WC.P2P.Connection do
 
   def handle_packet(%P2PPacket{proc: :block, extra_data: block}, state = %{asked_for: asked_for}) do
     block_hash = Block.hash(block)
-    :ok = BlockValidatorServer.validate_block(block)
+    :ok = LogServer.update(block)
     handle_end_of_batch(block_hash, state)
     %{state | asked_for: PriorityQueue.delete(InvItem.from_block_hash(block_hash), asked_for)}
   end

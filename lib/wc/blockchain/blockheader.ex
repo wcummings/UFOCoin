@@ -33,7 +33,7 @@ defmodule WC.Blockchain.BlockHeader do
                prev_block_hash :: binary-size(32),
                timestamp :: size(64),
                difficulty :: size(32),
-    height :: size(32),
+               height :: size(32),
                fake_merkle_hash :: binary-size(32),
                nonce :: binary-size(4)>>) do
     %__MODULE__{prev_block_hash: prev_block_hash,
@@ -72,8 +72,9 @@ defmodule WC.Blockchain.BlockHeader do
   end
 
   def pprint(block_header) do
-    "[" <> Base.encode16(hash(block_header)) <> ", "
-    <> "prev_block_hash: #{Base.encode16(block_header.prev_block_hash)}, "
+    "[prev_block_hash: #{Base.encode16(block_header.prev_block_hash)}, "
+    # "[" <> Base.encode16(hash(block_header)) <> ", "
+    # <> "prev_block_hash: #{Base.encode16(block_header.prev_block_hash)}, "
     # <> "timestamp: #{block_header.timestamp}, "
     # <> "difficulty: #{block_header.difficulty}, "
     <> "height: #{block_header.height}]"
