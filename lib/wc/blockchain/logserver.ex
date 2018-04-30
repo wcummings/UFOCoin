@@ -203,7 +203,7 @@ defmodule WC.Blockchain.LogServer do
       {:error, :notfound} ->
 	case validate_preappend(log, block) do
 	  :ok ->
-	    Logger.info "Accepted block: #{BlockHeader.pprint(block.header)}"
+	    Logger.info "Accepted block:\t#{BlockHeader.pprint(block.header)}"
 	    new_tip = update(log, block, tip)
 	    case OrphanBlockTable.get_by_prev_block_hash(block_hash) do
 	      {:ok, blocks} ->
@@ -218,7 +218,7 @@ defmodule WC.Blockchain.LogServer do
 	    :ok = P2PConnectionRegistry.broadcast("packet", %P2PPacket{proc: :getblocks, extra_data: make_block_locator(log, tip)})
 	    {:noreply, state}
 	  {:error, error} ->
-	    Logger.warn "Block rejected: #{inspect(error)}"
+	    Logger.warn "Block rejected:\t#{inspect(error)}"
 	    {:noreply, state}
 	end
       {:ok, _} ->
@@ -273,7 +273,7 @@ defmodule WC.Blockchain.LogServer do
       :ok = MinerServer.new_block(block)
     end
 
-    Logger.info "Advertising block: #{BlockHeader.pprint(block.header)}"
+    Logger.info "Advertising:\t#{BlockHeader.pprint(block.header)}"
     :ok = P2PConnectionRegistry.broadcast("packet", %P2PPacket{proc: :inv, extra_data: [InvItem.from_block_hash(Block.hash(block))]})
     new_tip
   end
@@ -501,9 +501,10 @@ defmodule WC.Blockchain.LogServer do
 	  case update_utxodb(log, removed_blocks, added_blocks) do
 	    :ok ->
 	      :ok = ChainState.update_longest(Block.hash(new_tip), true)
-	      # Enum.each(added_blocks, fn block -> Logger.info "Block accepted: #{BlockHeader.pprint(block.header)}" end)
+	      # Enum.each(added_blocks, fn block -> Logger.info "Block accepted:\t#{BlockHeader.pprint(block.header)}" end)
 	      for hash <- removed_block_hashes, do: :ok = ChainState.update_longest(hash, false)
 	      for hash <- added_block_hashes, do: :ok = ChainState.update_longest(hash, true)
+	      Logger.info "New tip:\t#{BlockHeader.pprint(new_tip.header)}"
 	      {:ok, new_tip}
 	    {:error, error} ->
 	      Logger.warn "Block rejected: #{inspect(error)}"
