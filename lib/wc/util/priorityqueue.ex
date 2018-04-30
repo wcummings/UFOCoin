@@ -1,3 +1,5 @@
+require Logger
+
 # TODO: implement max size, this thing is horribly inefficient
 
 defmodule WC.Util.PriorityQueue do

@@ -102,7 +102,7 @@ defmodule WC.Blockchain.UTXODb do
   end
 
   @spec undo_changeset(t, TX.t) :: list(utxo_op)
-  def undo_changeset(_db, tx = %TX{inputs: inputs, outputs: outputs, is_coinbase: true}) do
+  def undo_changeset(_db, tx = %TX{outputs: outputs, is_coinbase: true}) do
     Enum.with_index(outputs)
     |> Enum.map(fn {_, i} -> {:delete, {TX.hash(tx), i}} end)
   end

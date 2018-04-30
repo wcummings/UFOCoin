@@ -198,12 +198,14 @@ defmodule WC.Blockchain.LogServer do
   end
 
   def handle_cast({:update, block}, state = %{tip: tip, log: log}) do
-    case get_block_with_index(log, BlockHashIndex, Block.hash(block)) do
-      {:error, :notfound} ->    
+    block_hash = Block.hash(block)
+    case get_block_with_index(log, BlockHashIndex, block_hash) do
+      {:error, :notfound} ->
 	case validate_preappend(log, block) do
 	  :ok ->
-	    new_tip = update(log, block, tip)	    
-	    case OrphanBlockTable.get_by_prev_block_hash(Block.hash(block)) do
+	    Logger.info "Accepted block: #{BlockHeader.pprint(block.header)}"
+	    new_tip = update(log, block, tip)
+	    case OrphanBlockTable.get_by_prev_block_hash(block_hash) do
 	      {:ok, blocks} ->
 		Enum.each(blocks, &update/1)
 		{:noreply, %{state | tip: new_tip}}
@@ -211,16 +213,16 @@ defmodule WC.Blockchain.LogServer do
 		{:noreply, %{state | tip: new_tip}}
 	    end
 	  {:error, :orphan} ->
-	    :ok = OrphanBlockTable.insert(block)
 	    # Try to find the orphan's parents! ;_;
-	    :ok = P2PConnectionRegistry.broadcast("packet", %P2PPacket{proc: :getblocks, extra_data: make_block_locator(log, tip)})	    
+	    :ok = OrphanBlockTable.insert(block)
+	    :ok = P2PConnectionRegistry.broadcast("packet", %P2PPacket{proc: :getblocks, extra_data: make_block_locator(log, tip)})
 	    {:noreply, state}
-	  error ->
-	    {:noreply, state}	    
+	  {:error, error} ->
+	    Logger.warn "Block rejected: #{inspect(error)}"
+	    {:noreply, state}
 	end
       {:ok, _} ->
-	{:noreply, state}	
-
+	{:noreply, state}
     end
   end
 
@@ -267,11 +269,11 @@ defmodule WC.Blockchain.LogServer do
 
     {:ok, new_tip} = update_chain_state(log, tip, block)
     if block == new_tip do
-      # Logger.info "New tip: #{Base.encode16(Block.hash(new_tip))}"
-      :ok = P2PConnectionRegistry.broadcast("packet", %P2PPacket{proc: :getblocks, extra_data: make_block_locator(log, new_tip)})
+      :ok = P2PConnectionRegistry.broadcast("packet", %P2PPacket{proc: :getblocks, extra_data: make_block_locator(log, block)})
       :ok = MinerServer.new_block(block)
     end
 
+    Logger.info "Advertising block: #{BlockHeader.pprint(block.header)}"
     :ok = P2PConnectionRegistry.broadcast("packet", %P2PPacket{proc: :inv, extra_data: [InvItem.from_block_hash(Block.hash(block))]})
     new_tip
   end
@@ -300,7 +302,7 @@ defmodule WC.Blockchain.LogServer do
     if tip.header.height < 10 do
       dense_hashes ++ [genesis_block_hash]
     else
-      dense_hashes ++ make_prev_block_hashes_sparse(log, tip) ++ [genesis_block_hash]
+      Enum.uniq(dense_hashes ++ make_prev_block_hashes_sparse(log, tip) ++ [genesis_block_hash]) # HACK: get rid of uniq do it right ffs
     end
   end
 
@@ -311,7 +313,7 @@ defmodule WC.Blockchain.LogServer do
   def make_prev_block_hashes_sparse(log, tip, step, count, acc) do
     {:ok, block} = get_block_with_index(log, BlockHashIndex, tip.header.prev_block_hash)
     if block.header.height == 0 do
-      acc
+      Enum.reverse(acc)
     else
       if count == step do
 	make_prev_block_hashes_sparse(log, block, step * 2, 0, [Block.hash(block)|acc])
@@ -321,7 +323,6 @@ defmodule WC.Blockchain.LogServer do
     end
   end
 
-  
   @spec find_prev_blocks(BlockchainLog.t, non_neg_integer, Block.t) :: list(Block.t)
   def find_prev_blocks(log, number_of_blocks, tip) do
     if tip.header.height == 0 do
@@ -334,7 +335,7 @@ defmodule WC.Blockchain.LogServer do
   def find_prev_blocks(log, number_of_blocks, tip, acc) do
     {:ok, block} = get_block_with_index(log, BlockHashIndex, tip.header.prev_block_hash)
     if (block.header.height == 0) or (tip.header.height - block.header.height == number_of_blocks) do
-      acc
+      Enum.reverse(acc)
     else
       find_prev_blocks(log, number_of_blocks, block, [block|acc])
     end
@@ -478,11 +479,10 @@ defmodule WC.Blockchain.LogServer do
     new_cum_difficulty = cum_difficulty + new_tip.header.difficulty
     {:ok, {_, old_cum_difficulty, _}} = ChainState.get_height_and_cum_difficulty(Block.hash(old_tip))
     is_longest = new_cum_difficulty > old_cum_difficulty
-    :ok = ChainState.insert(Block.hash(new_tip), new_tip.header.height, new_cum_difficulty, is_longest)
+    :ok = ChainState.insert(Block.hash(new_tip), new_tip.header.height, new_cum_difficulty, false)
     if is_longest do
       case find_first_parent_in_longest_chain(log, new_tip) do
 	{:ok, parent} ->
-	  # Logger.info "update_chain_state: parent=#{inspect(parent)}"
 	  # 1. Update longest chain
 	  {:ok, [_|added_block_hashes]} = find_block_range(log, new_tip, parent)
 	  {:ok, [_|removed_block_hashes]} = find_block_range(log, old_tip, parent)
@@ -500,11 +500,13 @@ defmodule WC.Blockchain.LogServer do
 	  
 	  case update_utxodb(log, removed_blocks, added_blocks) do
 	    :ok ->
-	      Enum.each(added_blocks, fn block -> Logger.info "Block accepted: #{BlockHeader.pprint(block.header)}" end)
+	      :ok = ChainState.update_longest(Block.hash(new_tip), true)
+	      # Enum.each(added_blocks, fn block -> Logger.info "Block accepted: #{BlockHeader.pprint(block.header)}" end)
 	      for hash <- removed_block_hashes, do: :ok = ChainState.update_longest(hash, false)
 	      for hash <- added_block_hashes, do: :ok = ChainState.update_longest(hash, true)
 	      {:ok, new_tip}
-	    _ ->
+	    {:error, error} ->
+	      Logger.warn "Block rejected: #{inspect(error)}"
 	      {:ok, old_tip}
 	  end
 	error ->

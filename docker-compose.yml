@@ -38,7 +38,6 @@ services:
      - test
     ports:
       - "9009"
-      
 
 networks:
   test:

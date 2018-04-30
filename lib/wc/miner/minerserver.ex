@@ -31,7 +31,7 @@ defmodule WC.Miner.MinerServer do
   def handle_cast({:new_block, tip}, state = %{pids: pids, mining_processes: mining_processes}) do
     for pid <- pids, do: MinerWorker.stop(pid)
     new_block = Block.next_block(tip)
-    Logger.info "Mining new block #{BlockHeader.pprint(new_block.header)}"
+    # Logger.info "Mining new block #{BlockHeader.pprint(new_block.header)}"
     # TODO: get tx's for new block from mempool
     new_pids = Enum.map(1 .. mining_processes, fn _ ->
       {:ok, pid} = WorkerSupervisor.start_child(new_block)

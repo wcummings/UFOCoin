@@ -213,12 +213,8 @@ defmodule WC.Blockchain.Block do
 
   def get_outputs(_, [], acc), do: {:ok, acc}
 
-  #
-  # PRIVATE
-  #
-  
   def get_current_difficulty(block) do
-    blocks = LogServer.find_prev_blocks(144, block) ++ [block]
+    blocks = LogServer.find_prev_blocks(difficulty_number_of_blocks(), block) ++ [block]
     get_difficulty(blocks)
   end
 

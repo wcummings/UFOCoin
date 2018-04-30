@@ -3,6 +3,7 @@ require Logger
 alias WC.Blockchain.InvItem, as: InvItem
 alias WC.Blockchain.LogServer, as: LogServer
 alias WC.Blockchain.Block, as: Block
+alias WC.Blockchain.BlockHeader, as: BlockHeader
 alias WC.P2P.Packet, as: P2PPacket
 alias WC.P2P.AddrTable, as: P2PAddrTable
 alias WC.P2P.Addr, as: P2PAddr
@@ -48,7 +49,6 @@ defmodule WC.P2P.Connection do
 
   def init([socket]) do
     :ok = :inet.setopts(socket, [{:active, :once}]) # Re-set {:active, :once}    
-    # P2PConnectionRegistry.register("new_tip")
     P2PConnectionRegistry.register("packet")
     {:ok, pid} = P2PPingFSMSupervisor.start_child(self())
     :true = Process.link(pid)
@@ -77,11 +77,6 @@ defmodule WC.P2P.Connection do
     {:noreply, state}
   end
 
-  # def handle_info({:connection_registry, "new_tip", tip}, state = %{socket: socket}) do
-  #   :ok = send_packet(socket, %P2PPacket{proc: :getblocks, extra_data: LogServer.make_block_locator(tip)})
-  #   {:noreply, state}
-  # end
-
   def handle_info({:connection_registry, "packet", packet}, state = %{socket: socket}) do
     :ok = send_packet(socket, packet)
     {:noreply, state}
@@ -101,14 +96,6 @@ defmodule WC.P2P.Connection do
   end
 
   def handle_info(:flush_asked_for, state = %{asked_for: asked_for, already_asked_for: already_asked_for, socket: socket}) do
-    # Enum.filter(already_asked_for, fn {k, v} -> 
-    
-    # # Expire already_asked_for keys
-    # new_already_asked_for = Enum.filter(already_asked_for, fn
-    #   {k, v} when v < current_ts - 2 * 60 * 1000 -> false;
-    #   _ -> true
-    # end)
-    
     current_ts = :os.system_time(:millisecond)
     invitems = PriorityQueue.get(asked_for, current_ts+1)
     |> Enum.filter(fn invitem -> not LogServer.exists?(invitem.hash) end)
