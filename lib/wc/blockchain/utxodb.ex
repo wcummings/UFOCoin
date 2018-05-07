@@ -123,4 +123,9 @@ defmodule WC.Blockchain.UTXODb do
     result
   end
 
+  @spec utxo_record_to_input(utxo_record, binary()) :: Input.t
+  def utxo_record_to_input({{tx_hash, offset}, _}, pubkey) do
+    %Input{tx_hash: tx_hash, offset: offset, pubkey: pubkey}
+  end
+
 end

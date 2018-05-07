@@ -42,9 +42,8 @@ config :wc,
   data_dir: "."
 
 config :logger, :console,
-  # format: "$time $metadata[$level] $levelpad$message\n",
-  format: "$time $levelpad$message\n",
+  format: "$time $metadata[$level] $levelpad$message\n",
   # metadata: [:module, :function, :line],
-  #level: :info
-  level: :debug
+  metadata: [:block_hash],
+  level: :info
 
