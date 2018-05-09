@@ -13,7 +13,7 @@ defmodule WC.Blockchain.UTXODb do
   @opaque t :: :raw | {:inmem, %{}}
   @type db_type :: :raw | :inmem
   @type utxo_key :: {TX.tx_hash, Input.offset}
-  @type utxo_record :: {utxo_key, {binary(), non_neg_integer()}}
+  @type utxo_record :: {utxo_key, {TX.tx_hash, non_neg_integer()}}
   @type utxo_op :: {:add, utxo_record} | {:delete, utxo_key}
   
   def init do
@@ -117,10 +117,10 @@ defmodule WC.Blockchain.UTXODb do
     deleted ++ added
   end
 
-  @spec scan(KeyStore.fingerprint) :: list(utxo_record)
+  @spec scan(KeyStore.fingerprint) :: list({utxo_key, Output.t})
   def scan(fingerprint) do
     {:atomic, result} = :mnesia.transaction(fn -> :mnesia.match_object({UTXODbTable, :_, {fingerprint, :_}}) end)
-    result
+    Enum.map(result, fn {UTXODbTable, utxo_key, output} -> {utxo_key, Output.from_tuple(output)} end)
   end
 
   @spec utxo_record_to_input(utxo_record, binary()) :: Input.t

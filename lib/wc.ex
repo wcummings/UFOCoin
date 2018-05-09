@@ -20,6 +20,9 @@ defmodule WC do
     print_configuration()
     
     Logger.debug "Initializing mnesia tables..."
+    # Application.put_env(:mnesia, :dir, ".")
+    # :mnesia.create_schema([Node.self()])
+    :mnesia.change_table_copy_type(:schema, Node.self(), :disc_copies)    
     mnesia_tables = [
       P2PAddrTable,
       OrphanBlockTable,
@@ -40,7 +43,7 @@ defmodule WC do
       end
     end)
 
-    setup_keystore()
+    # setup_keystore()
     
     # Insert seed nodes
     seed_nodes = lookup_seed_nodes()

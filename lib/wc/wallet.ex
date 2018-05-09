@@ -1,3 +1,5 @@
+require Logger
+
 alias WC.Wallet.KeyStore, as: KeyStore
 alias WC.Blockchain.Output, as: Output
 alias WC.Blockchain.Input, as: Input
@@ -45,6 +47,7 @@ defmodule WC.Wallet do
 	change_fingerprint = KeyStore.generate_key
 	change_output = %Output{fingerprint: change_fingerprint, value: change}
 	# Make inputs
+	Logger.info "#{inspect(utxo_to_be_spent)}"
 	inputs = Enum.map(utxo_to_be_spent, fn {key, output} ->
 	  {:ok, {pubkey, _}} = KeyStore.get_keypair(output.fingerprint)
 	  {key, pubkey}

@@ -41,6 +41,8 @@ config :wc,
   # data_dir: "/var/wc/"
   data_dir: "."
 
+config :mnesia, dir: to_charlist File.cwd!  
+  
 config :logger, :console,
   format: "$time $metadata[$level] $levelpad$message\n",
   # metadata: [:module, :function, :line],

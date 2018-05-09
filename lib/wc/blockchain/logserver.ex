@@ -42,7 +42,6 @@ defmodule WC.Blockchain.LogServer do
     :ok = PrevBlockHashIndex.init
     :ok = TxHashIndex.init
     :ok = ChainState.init
-    # :ok = UTXOSet.init
     # Kick off indexer process
     spawn_link index_blocks(self())
     {:ok, %{@initial_state | log: log}}

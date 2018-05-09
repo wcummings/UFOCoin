@@ -9,7 +9,8 @@ defmodule WC.Wallet.KeyStore do
   @type keypair :: {pubkey, privkey}
     
   def init do
-    :mnesia.create_table(KeyStoreTable, [attributes: [:fingerprint, :keypair], type: :set])#, disc_copies: [Node.self()]])
+    :mnesia.create_table(KeyStoreTable, [attributes: [:fingerprint, :keypair], type: :set, disc_copies: [Node.self()]])
+    # :mnesia.create_table(KeyStoreTable, [attributes: [:fingerprint, :keypair], type: :set])
   end
 
   @spec generate_key :: fingerprint

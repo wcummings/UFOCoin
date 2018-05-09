@@ -174,6 +174,7 @@ defmodule WC.P2P.Connection do
 	    # Do nothing
 	    nil
 	  block_hashes ->
+	    # Logger.info "Received getblocks, remove node is #{length(block_hashes)} blocks behind"
 	    # Send inventory
 	    invitems = Enum.map(block_hashes, &InvItem.from_block_hash/1)
 	    packet = %P2PPacket{proc: :inv, extra_data: invitems}
