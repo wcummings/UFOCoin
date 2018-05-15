@@ -1,4 +1,6 @@
-* WhipCash
+* UFOCoin
+
+MADE WITH ALIEN TECHNOLOGY. UFOCOIN TO THE MOON!
 
 [[https://github.com/wcummings/WhipCash/blob/master/fault_tolerance.png]]
 
