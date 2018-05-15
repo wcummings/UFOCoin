@@ -1,8 +1,8 @@
 * UFOCoin
 
-MADE WITH ALIEN TECHNOLOGY. UFOCOIN TO THE MOON!
+** MADE WITH ALIEN TECHNOLOGY. UFOCOIN GOES TO THE MOON!
 
-[[https://github.com/wcummings/WhipCash/blob/master/fault_tolerance.png]]
+[[https://github.com/wcummings/UFOCoin/blob/master/iwanttobelieve.jpg]]
 
 ** What (barely) works
 
