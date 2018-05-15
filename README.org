@@ -2,8 +2,6 @@
 
 ** MADE WITH ALIEN TECHNOLOGY. UFOCOIN GOES TO THE MOON!
 
-[[https://github.com/wcummings/UFOCoin/blob/master/iwanttobelieve.jpg]]
-
 ** What (barely) works
 
    - [X] Peer discovery
